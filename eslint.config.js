@@ -38,9 +38,15 @@ export default tseslint.config(
     },
   },
   {
+    // Harnesses capture user output by replacing console methods.
+    files: ['packages/problem-kit/harness/**'],
+    rules: { 'no-console': 'off' },
+  },
+  {
     // NestJS resolves constructor-injected classes at runtime, so they must stay value imports.
+    // no-useless-assignment does not see values used only inside parameter decorators.
     files: ['apps/api/**/*.ts'],
-    rules: { '@typescript-eslint/consistent-type-imports': 'off' },
+    rules: { '@typescript-eslint/consistent-type-imports': 'off', 'no-useless-assignment': 'off' },
   },
   {
     files: ['apps/web/**/*.{ts,tsx}', 'packages/ui/**/*.{ts,tsx}'],

@@ -19,6 +19,10 @@ import { RateLimitService } from './rate-limit/rate-limit.service.js';
 import { AccountDeletionService } from './users/account-deletion.service.js';
 import { DataExportService } from './users/data-export.service.js';
 import { MeService } from './users/me.service.js';
+import { AdminProblemsController } from './problems/admin-problems.controller.js';
+import { ContentService } from './problems/content.service.js';
+import { ProblemsController } from './problems/problems.controller.js';
+import { SolvedService } from './problems/solved.service.js';
 import { UsersController } from './users/users.controller.js';
 
 /** Cross-cutting services every feature module may inject. */
@@ -56,7 +60,14 @@ export class AccountsModule {}
 export class AdminModule {}
 
 @Module({
-  imports: [InfraModule, CoreModule, AccountsModule, AdminModule],
+  controllers: [ProblemsController, AdminProblemsController],
+  providers: [ContentService, SolvedService],
+  exports: [ContentService, SolvedService],
+})
+export class ProblemsModule {}
+
+@Module({
+  imports: [InfraModule, CoreModule, AccountsModule, AdminModule, ProblemsModule],
   controllers: [HealthController],
   providers: [
     { provide: APP_FILTER, useClass: ErrorFilter },

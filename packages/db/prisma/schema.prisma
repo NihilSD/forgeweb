@@ -147,3 +147,100 @@ model AuditLog {
   @@index([actorId, at])
   @@index([action, at])
 }
+
+// ---------------------------------------------------------------- L3: problems
+
+model Track {
+  id        String    @id @default(uuid()) @db.Uuid
+  slug      String    @unique
+  name      String
+  order     Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  problems  Problem[]
+}
+
+enum ProblemStatus {
+  draft
+  published
+  retired
+}
+
+enum ReviewStatus {
+  needs_review
+  approved
+}
+
+enum ProblemMode {
+  practice
+  competitive
+  both
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+  expert
+}
+
+model Problem {
+  id             String           @id @default(uuid()) @db.Uuid
+  slug           String           @unique
+  trackId        String           @db.Uuid
+  track          Track            @relation(fields: [trackId], references: [id])
+  title          String
+  difficulty     Difficulty
+  /// Starts from difficulty (spec 8); recalculated weekly from verified solve rates (v1).
+  rating         Int
+  tags           String[]
+  formats        String[]
+  languages      String[]
+  mode           ProblemMode
+  status         ProblemStatus    @default(draft)
+  reviewStatus   ReviewStatus     @default(needs_review)
+  /// Current version number (ProblemVersion.version).
+  version        Int
+  publishedAt    DateTime?
+  /// Title, tags and slug, maintained by the importer; source of `search`.
+  searchText     String           @default("")
+  /// Generated tsvector (see the l3 migration); read-only.
+  search         Unsupported("tsvector")?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  versions       ProblemVersion[]
+
+  @@index([trackId, status])
+  @@index([status, difficulty])
+  @@index([search], type: Gin)
+}
+
+/// Everything needed to serve and grade one version of a package. Fields marked SERVER-ONLY
+/// must never be sent to clients (hidden tests are produced by `moduleCode`).
+model ProblemVersion {
+  id               String    @id @default(uuid()) @db.Uuid
+  problemId        String    @db.Uuid
+  problem          Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  version          Int
+  packageHash      String
+  /// Statement markdown with {{placeholders}}.
+  statement        String
+  limits           Json
+  /// problem.yaml as parsed (entry, comparator, verifiedMinutes, ...).
+  manifest         Json
+  /// Starter templates per language.
+  starters         Json
+  hints            Json
+  editorial        String
+  /// SERVER-ONLY: reference solutions per language.
+  references       Json
+  /// SERVER-ONLY: bundled generator/tests/followups (ESM).
+  moduleCode       String
+  validationReport Json?
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([problemId, version])
+  @@index([packageHash])
+}

@@ -55,6 +55,8 @@ jobs:
         run: pnpm lint && pnpm format:check
       - name: Unit and integration tests
         run: pnpm test
+      - name: Validate content packages
+        run: pnpm problems:validate
       - name: Install Playwright browser
         run: pnpm --filter @forge/web exec playwright install --with-deps chromium
       - name: End-to-end tests

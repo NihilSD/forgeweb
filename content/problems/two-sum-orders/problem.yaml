@@ -1,0 +1,18 @@
+id: two-sum-orders
+title: Matching Orders
+track: algorithms
+format: write-code
+difficulty: easy
+tags: [hashing, arrays]
+languages: [python, typescript, javascript]
+mode: both
+limits: { timeMs: 2000, memoryMb: 256, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+entry:
+  python: match_orders
+  typescript: matchOrders
+  javascript: matchOrders
+comparator: exact
+verifiedMinutes: 30

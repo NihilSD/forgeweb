@@ -1,6 +1,7 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+  - 'content'
 allowBuilds:
   argon2: true
   esbuild: true

@@ -1,0 +1,18 @@
+{
+  "extends": "../packages/config/tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": [],
+    "paths": { "@forge/problem-kit": ["../packages/problem-kit/src/schema.ts"] }
+  },
+  "include": ["problems/**/*.ts", "courses/**/*.ts"],
+  "exclude": [
+    "problems/**/reference/**",
+    "problems/**/starter/**",
+    "problems/**/wrong/**",
+    "problems/_fixtures/**"
+  ]
+}

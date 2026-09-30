@@ -1,0 +1,18 @@
+id: fix-restock-report
+title: Fix the Restock Report
+track: debugging
+format: fix-code
+difficulty: medium
+tags: [hashing, off-by-one]
+languages: [python, typescript, javascript]
+mode: both
+limits: { timeMs: 2000, memoryMb: 256, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+entry:
+  python: restock_report
+  typescript: restockReport
+  javascript: restockReport
+comparator: exact
+verifiedMinutes: 30

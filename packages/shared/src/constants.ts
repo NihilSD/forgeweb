@@ -49,12 +49,7 @@ export const FORMATS = [
 ] as const;
 export type ProblemFormat = (typeof FORMATS)[number];
 /** Formats supported by the launch runner and workspace. */
-export const LAUNCH_FORMATS: readonly ProblemFormat[] = [
-  'write-code',
-  'fix-code',
-  'predict',
-  'flag',
-];
+export const LAUNCH_FORMATS: readonly ProblemFormat[] = ['write-code', 'fix-code', 'flag'];
 
 export const PROBLEM_MODES = ['practice', 'competitive', 'both'] as const;
 export type ProblemMode = (typeof PROBLEM_MODES)[number];

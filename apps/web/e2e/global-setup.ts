@@ -24,5 +24,11 @@ export default async function globalSetup() {
     );
   }
   await client.end();
+  // Sample content, published without review: development and tests only.
+  execSync('pnpm exec tsx src/cli/import-problems.ts --no-validate --publish-drafts', {
+    cwd: resolve(import.meta.dirname, '../../api'),
+    env: { ...process.env, NODE_ENV: 'test', DATABASE_URL: E2E_DATABASE_URL },
+    stdio: 'pipe',
+  });
   await fetch(`${MAILPIT_URL}/api/v1/messages`, { method: 'DELETE' }).catch(() => undefined);
 }

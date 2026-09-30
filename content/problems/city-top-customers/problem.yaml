@@ -1,0 +1,13 @@
+id: city-top-customers
+title: Top Customers in a City
+track: sql
+format: write-code
+difficulty: medium
+tags: [aggregation, joins, select]
+languages: [sql]
+mode: practice
+limits: { timeMs: 3000, memoryMb: 256, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+comparator: rows

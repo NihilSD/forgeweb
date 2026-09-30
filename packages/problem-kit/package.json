@@ -1,0 +1,40 @@
+{
+  "name": "@forge/problem-kit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "forge-problems": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./dev-executor": {
+      "types": "./dist/exec/dev-executor.d.ts",
+      "default": "./dist/exec/dev-executor.js"
+    },
+    "./harness/*": "./harness/*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && chmod +x dist/cli.js",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@forge/shared": "workspace:*",
+    "esbuild": "0.28.2",
+    "pg": "8.23.0",
+    "yaml": "2.9.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@forge/config": "workspace:*",
+    "@types/node": "26.6.3",
+    "@types/pg": "8.23.1",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

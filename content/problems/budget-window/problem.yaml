@@ -1,0 +1,17 @@
+id: budget-window
+title: Longest Streak Within Budget
+track: algorithms
+format: write-code
+difficulty: medium
+tags: [sliding-window, two-pointers, arrays]
+languages: [python, typescript, javascript]
+mode: practice
+limits: { timeMs: 2000, memoryMb: 256, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+entry:
+  python: longest_streak
+  typescript: longestStreak
+  javascript: longestStreak
+comparator: exact

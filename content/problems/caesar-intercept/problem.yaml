@@ -1,0 +1,12 @@
+id: caesar-intercept
+title: Intercepted Message
+track: security
+format: flag
+difficulty: easy
+tags: [crypto, encoding]
+languages: [python]
+mode: practice
+limits: { timeMs: 3000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
