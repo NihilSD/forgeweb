@@ -1,4 +1,8 @@
+import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
+
+// Local runs read the root .env (e.g. PLAYWRIGHT_CHROMIUM_PATH); CI sets variables directly.
+if (existsSync('../../.env')) process.loadEnvFile('../../.env');
 
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH;
 const reuse = !process.env.CI;

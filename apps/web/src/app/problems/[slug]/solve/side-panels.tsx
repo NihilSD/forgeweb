@@ -2,6 +2,7 @@
 import type { Submission } from '@forge/shared';
 import { Alert, Button, EmptyState, Input, Label } from '@forge/ui';
 import { Download } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiClientError } from '@/lib/api-client';
 import { VerdictBadge } from './results-panel';
@@ -92,7 +93,12 @@ export function FlagPanel({ slug, onSolved }: { slug: string; onSolved: () => vo
           Your files
         </h2>
         <p className="text-xs text-muted-foreground">
-          These files are generated for you. Download links expire after 5 minutes.
+          These files are generated for you and your flag only counts for your account. Download
+          links expire after 5 minutes. Only attack challenge files:{' '}
+          <Link href="/security/rules" className="underline">
+            challenge rules
+          </Link>
+          .
         </p>
         {files?.map((f) => (
           <Button key={f.name} asChild variant="outline" className="w-fit">

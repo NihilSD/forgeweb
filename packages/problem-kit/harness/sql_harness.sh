@@ -38,6 +38,7 @@ for dir in /work/tests/*/; do
      ! $SU -d "$db" -f "$dir/setup.sql" >/dev/null 2>>/tmp/setup.err ||
      ! $SU -d "$db" -c "REVOKE ALL ON SCHEMA public FROM PUBLIC; GRANT USAGE ON SCHEMA public TO solver; GRANT SELECT ON ALL TABLES IN SCHEMA public TO solver; REVOKE TEMP ON DATABASE $db FROM PUBLIC" >/dev/null 2>>/tmp/setup.err; then
     emit "{\"type\":\"test\",\"id\":\"$id\",\"status\":\"error\",\"timeMs\":0,\"errorB64\":\"$(b64 /tmp/setup.err)\"}"
+    $SU -d postgres -c "DROP DATABASE IF EXISTS $db WITH (FORCE)" >/dev/null 2>&1
     continue
   fi
   started="$(now_ms)"
@@ -52,6 +53,9 @@ for dir in /work/tests/*/; do
   else
     emit "{\"type\":\"test\",\"id\":\"$id\",\"status\":\"error\",\"timeMs\":$elapsed,\"errorB64\":\"$(b64 /tmp/err.txt)\"}"
   fi
+  # /tmp is memory-backed and counts against the container's memory limit: drop each database
+  # once its result is out, so long suites don't get PostgreSQL OOM-killed part-way through.
+  $SU -d postgres -c "DROP DATABASE IF EXISTS $db WITH (FORCE)" >/dev/null 2>&1
 done
 emit '{"type":"done"}'
 pg_ctl -D "$PG" -s -m immediate stop >/dev/null 2>&1

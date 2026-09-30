@@ -1,0 +1,15 @@
+id: fix-order-lookup-sqli
+title: Fix the Order Lookup
+track: security
+format: fix-code
+difficulty: easy
+tags: [injection, secure-fix, select]
+languages: [python]
+mode: practice
+limits: { timeMs: 3000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+entry:
+  python: find_orders
+comparator: exact

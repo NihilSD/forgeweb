@@ -1,4 +1,5 @@
 export * from './schema.js';
+export * from './files.js';
 export * from './rng.js';
 export * from './render.js';
 export * from './compare.js';

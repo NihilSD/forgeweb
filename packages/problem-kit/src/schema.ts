@@ -60,14 +60,16 @@ export const manifestSchema = z
   });
 export type Manifest = z.infer<typeof manifestSchema>;
 
+export type InstanceFile = string | { base64: string };
+
 /** Values available to statement/starter placeholders, plus anything the tests need. */
 export interface Instance {
   /** Rendered into {{placeholders}} in statement.md, starter/ and reference/ files. */
   params: Record<string, string | number>;
   /** Free-form data used by tests.ts and followups.ts. Never sent to the client. */
   data?: unknown;
-  /** Flag format: downloadable files (name → contents). */
-  files?: Record<string, string>;
+  /** Flag format: downloadable files (name → text, or { base64 } for binary files such as pcaps). */
+  files?: Record<string, InstanceFile>;
 }
 
 export interface TestCase {

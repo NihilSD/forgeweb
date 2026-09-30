@@ -1,0 +1,17 @@
+id: fix-comment-escape
+title: Fix the Comment Renderer
+track: security
+format: fix-code
+difficulty: easy
+tags: [xss, secure-fix, strings]
+languages: [python, typescript, javascript]
+mode: practice
+limits: { timeMs: 3000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+entry:
+  python: render_comment
+  typescript: renderComment
+  javascript: renderComment
+comparator: exact

@@ -1,0 +1,12 @@
+id: auth-log-triage
+title: Night Shift Logins
+track: security
+format: flag
+difficulty: easy
+tags: [forensics, logs, auth]
+languages: [python]
+mode: practice
+limits: { timeMs: 3000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review

@@ -1,0 +1,12 @@
+id: pcap-basic-auth
+title: Plain Sight Password
+track: security
+format: flag
+difficulty: medium
+tags: [forensics, auth, encoding]
+languages: [python]
+mode: practice
+limits: { timeMs: 3000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review

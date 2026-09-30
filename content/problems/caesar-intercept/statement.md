@@ -2,4 +2,4 @@ Our monitoring picked up a short message sent from a test account inside **{{org
 
 Download `intercept.txt`, recover the original message, and submit the flag it contains. Flags look like `FORGE{...}`.
 
-> This is a practice challenge built for Forge. Only attack challenges on Forge itself.
+> This is a practice challenge built for Forge. Read the [challenge rules](/security/rules): only attack challenges on Forge itself.

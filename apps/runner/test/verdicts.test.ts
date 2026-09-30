@@ -97,5 +97,18 @@ describe.skipIf(!enabled)('verdicts in real sandboxes', () => {
     ])('%s', async (verdict, code) => {
       expect(await run(code)).toBe(verdict);
     });
+
+    it('runs many tests in one sandbox without running out of memory', async () => {
+      // Every test gets its own database on the memory-backed /tmp; they must be dropped after
+      // use, or the cgroup OOM-kills PostgreSQL part-way through a long suite.
+      const tests = Array.from({ length: 40 }, (_, i) => ({ id: `t${i}`, setupSql }));
+      const result = await executor.run({
+        language: 'sql',
+        code: 'SELECT name, n FROM t WHERE n > 1;',
+        tests,
+        limits,
+      });
+      expect(result.tests.map((t) => t.status)).toEqual(tests.map(() => 'ok'));
+    }, 120_000);
   });
 });

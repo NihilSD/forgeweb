@@ -19,7 +19,7 @@
     "db:migrate": "pnpm --filter @forge/db migrate:dev",
     "db:deploy": "pnpm --filter @forge/db migrate:deploy",
     "db:seed": "pnpm --filter @forge/db seed",
-    "problems:validate": "pnpm --filter @forge/problem-kit build && pnpm --filter @forge/problem-kit exec forge-problems validate ../../content/problems",
+    "problems:validate": "pnpm --filter @forge/problem-kit build && pnpm --filter @forge/problem-kit exec node dist/cli.js validate ../../content/problems",
     "problems:import": "pnpm --filter @forge/api problems:import"
   },
   "devDependencies": {

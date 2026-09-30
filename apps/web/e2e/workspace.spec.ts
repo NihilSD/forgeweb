@@ -100,6 +100,19 @@ test.describe('workspace', () => {
     await page.getByLabel('Flag').fill(flag);
     await page.getByRole('button', { name: 'Submit flag' }).click();
     await expect(page.getByText('Correct flag. Well done!')).toBeVisible();
+    // The rules are one click away from every flag challenge.
+    const rules = page.getByRole('link', { name: 'challenge rules' });
+    await expect(rules).toHaveCount(2); // statement + flag panel
+    await rules.first().click();
+    await expect(page.getByRole('heading', { name: 'Security challenge rules' })).toBeVisible();
+    await expect(page.getByText("only attack Forge's own challenge files")).toBeVisible();
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])
+      .analyze();
+    const serious = results.violations.filter(
+      (v) => v.impact === 'serious' || v.impact === 'critical',
+    );
+    expect(serious, JSON.stringify(serious.map((v) => v.id))).toEqual([]);
   });
 
   test('workspace has no serious accessibility violations', async ({ page }) => {

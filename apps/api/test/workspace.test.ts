@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { fileText } from '@forge/problem-kit';
 import { FlagsService } from '../src/flags/flags.service.js';
 import { importProblems } from '../src/problems/importer.js';
 import { createTestContext, createUser, type TestClient, type TestContext } from './helpers.js';
@@ -124,28 +125,61 @@ describe('flag challenges', () => {
     expect(JSON.stringify(await ctx.prisma.flagIssue.findMany())).not.toContain(flagA);
   });
 
-  it("never puts another user's flag in a user's files (many users)", async () => {
+  it("never puts another user's flag in any challenge's files (every flag problem, many users)", async () => {
     const flags = ctx.app.get(FlagsService);
-    const problem = await ctx.prisma.problem.findUniqueOrThrow({
-      where: { slug: 'caesar-intercept' },
-      include: { track: true },
+    const problems = await ctx.prisma.problem.findMany({
+      where: { formats: { has: 'flag' } },
+      include: { track: true, versions: { take: 1, orderBy: { version: 'desc' } } },
     });
-    const version = await ctx.prisma.problemVersion.findFirstOrThrow({
-      where: { problemId: problem.id },
-    });
-    const loaded = { ...problem, current: version };
+    expect(problems.length).toBeGreaterThanOrEqual(6);
     const users = await Promise.all(
-      Array.from({ length: 25 }, (_, i) =>
+      Array.from({ length: 15 }, (_, i) =>
         ctx.prisma.user.create({ data: { email: `flag${i}@example.com` } }),
       ),
     );
-    const all = users.map((u) => flags.flag(u.id, problem.id));
-    expect(new Set(all).size).toBe(users.length);
-    for (const [i, u] of users.entries()) {
-      const text = Object.values(await flags.files(u.id, loaded)).join('\n');
-      expect(decode(text)).toBe(all[i]);
-      for (const [j, other] of all.entries()) if (j !== i) expect(decode(text)).not.toBe(other);
+    for (const problem of problems) {
+      const loaded = { ...problem, current: problem.versions[0]! };
+      const all = users.map((u) => flags.flag(u.id, problem.id));
+      expect(new Set(all).size).toBe(users.length);
+      for (const [i, u] of users.entries()) {
+        const text = Object.values(await flags.files(u.id, loaded))
+          .map(fileText)
+          .join('\n');
+        // Text files carry the flag verbatim or encoded; the check that matters is that no
+        // other user's flag appears in any form we can scan for.
+        for (const [j, other] of all.entries()) {
+          if (j !== i)
+            expect(text, `${problem.slug}: user ${i} has user ${j}'s flag`).not.toContain(other);
+        }
+      }
     }
+    // Caesar: the decoded file holds exactly this user's flag.
+    const caesar = problems.find((p) => p.slug === 'caesar-intercept')!;
+    const files = await flags.files(users[0]!.id, { ...caesar, current: caesar.versions[0]! });
+    expect(decode(Object.values(files).map(fileText).join('\n'))).toBe(
+      flags.flag(users[0]!.id, caesar.id),
+    );
+  });
+
+  it('serves binary challenge files byte for byte', async () => {
+    const { client, user } = await createUser(ctx);
+    const list = await client.get('/problems/pcap-basic-auth/files');
+    const file = list.body.items.find((f: { name: string }) => f.name === 'capture.pcap');
+    const res = await client.get(file.url.replace('/api/v1', ''));
+    expect(res.status).toBe(200);
+    const body = res.body as Buffer;
+    // pcap magic number, little-endian.
+    expect(body.subarray(0, 4).toString('hex')).toBe('d4c3b2a1');
+    const flags = ctx.app.get(FlagsService);
+    const problem = await ctx.prisma.problem.findUniqueOrThrow({
+      where: { slug: 'pcap-basic-auth' },
+      include: { track: true, versions: { take: 1, orderBy: { version: 'desc' } } },
+    });
+    const expected = (await flags.files(user.id, { ...problem, current: problem.versions[0]! }))[
+      'capture.pcap'
+    ];
+    expect(typeof expected).toBe('object');
+    expect(body.toString('base64')).toBe((expected as { base64: string }).base64);
   });
 
   it('only flag problems have files or accept flags', async () => {

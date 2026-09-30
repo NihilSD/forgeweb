@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@forge/db';
-import { flagFor } from '@forge/problem-kit';
+import { flagFor, type InstanceFile } from '@forge/problem-kit';
 import { hmac, safeEqual, sha256 } from '../common/crypto.js';
 import { ENV, type Env } from '../config/env.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -42,7 +42,7 @@ export class FlagsService {
   }
 
   /** The user's own files (with their flag embedded). */
-  async files(userId: string, problem: LoadedProblem): Promise<Record<string, string>> {
+  async files(userId: string, problem: LoadedProblem): Promise<Record<string, InstanceFile>> {
     const flag = this.flag(userId, problem.id);
     await this.recordIssue(userId, problem.id, flag);
     const gen = await this.content.instance(

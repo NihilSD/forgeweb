@@ -11,7 +11,7 @@ export function Markdown({ children }: { children: string }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         skipHtml
-        urlTransform={(url) => (/^(https?:|mailto:|\/|#)/i.test(url) ? url : '')}
+        urlTransform={(url) => (/^(https?:|mailto:|\/(?!\/)|#)/i.test(url) ? url : '')}
         components={{
           a: ({ href, children: c }) => (
             <a

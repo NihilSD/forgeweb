@@ -1,0 +1,16 @@
+id: fix-upload-path
+title: Fix the Upload Path
+track: security
+format: fix-code
+difficulty: medium
+tags: [web-vulns, secure-fix, strings]
+languages: [python, javascript]
+mode: practice
+limits: { timeMs: 3000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+entry:
+  python: resolve_upload
+  javascript: resolveUpload
+comparator: exact

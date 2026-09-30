@@ -5,3 +5,4 @@ packages/db/src/generated
 packages/db/prisma/migrations
 .next
 dist
+next-env.d.ts

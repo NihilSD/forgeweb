@@ -6,6 +6,7 @@ import { flagFor } from './flag.js';
 import { grade } from './grade.js';
 import { type GeneratedInstance, generateInstance, loadModule } from './load.js';
 import { placeholders, render } from './render.js';
+import { fileText } from './files.js';
 import type { PackageModule } from './schema.js';
 
 export interface ValidationReport {
@@ -282,7 +283,9 @@ async function validateFlag(
       return;
     }
     // Only this user's flag may appear in their files.
-    const blob = JSON.stringify(i.instance.files);
+    const blob = Object.values(i.instance.files ?? {})
+      .map(fileText)
+      .join('\n');
     const other = flagFor(VALIDATOR_FLAG_SECRET, `user-${i.seed + 1}`, pkg.manifest.id);
     if (blob.includes(other))
       report.errors.push(`seed ${i.seed}: files contain another user's flag`);

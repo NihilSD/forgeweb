@@ -121,7 +121,7 @@ export class WorkspaceController {
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
     res.setHeader('Cache-Control', 'private, no-store');
-    res.send(content);
+    res.send(typeof content === 'string' ? content : Buffer.from(content.base64, 'base64'));
   }
 
   @Post('flag')
