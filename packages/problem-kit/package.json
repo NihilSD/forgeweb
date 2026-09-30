@@ -15,7 +15,11 @@
       "types": "./dist/exec/dev-executor.d.ts",
       "default": "./dist/exec/dev-executor.js"
     },
-    "./harness/*": "./harness/*"
+    "./harness/*": "./harness/*",
+    "./docker-executor": {
+      "types": "./dist/exec/docker-executor.d.ts",
+      "default": "./dist/exec/docker-executor.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && chmod +x dist/cli.js",

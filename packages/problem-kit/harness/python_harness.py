@@ -10,6 +10,7 @@ Usage: python3 python_harness.py <request.json> <solution.py>
 import copy
 import io
 import json
+import os
 import signal
 import sys
 import time
@@ -49,7 +50,14 @@ def _short_error(exc):
     return text[-2000:]
 
 
+_KEEP_ENV = {'PATH', 'LANG', 'LC_ALL', 'HOME', 'PYTHONDONTWRITEBYTECODE', 'PYTHONUNBUFFERED', 'PYTHONHASHSEED'}
+
+
 def main():
+    # Submitted code sees a minimal environment (base images set variables we don't need).
+    for key in list(os.environ):
+        if key not in _KEEP_ENV:
+            del os.environ[key]
     request_path, solution_path = sys.argv[1:3]
     with open(request_path, encoding='utf-8') as f:
         request = json.load(f)

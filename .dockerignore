@@ -1,0 +1,9 @@
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+.git
+**/test-results
+**/playwright-report
+.env
+.env.*

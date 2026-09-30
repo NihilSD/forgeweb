@@ -11,6 +11,10 @@ import { readFileSync, writeSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { performance } from 'node:perf_hooks';
 
+// Submitted code sees a minimal environment (base images set variables we don't need).
+const KEEP_ENV = new Set(['PATH', 'LANG', 'HOME', 'NODE_ENV']);
+for (const key of Object.keys(process.env)) if (!KEEP_ENV.has(key)) delete process.env[key];
+
 const MARKER = '\x1eFORGE\x1f';
 const [requestPath, solutionPath] = process.argv.slice(2);
 const request = JSON.parse(readFileSync(requestPath, 'utf8'));

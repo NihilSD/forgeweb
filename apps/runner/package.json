@@ -1,0 +1,28 @@
+{
+  "name": "@forge/runner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/main.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:load": "RUN_LOAD_TEST=1 vitest run test/load.test.ts"
+  },
+  "dependencies": {
+    "@forge/problem-kit": "workspace:*",
+    "@forge/shared": "workspace:*",
+    "bullmq": "6.3.10",
+    "ioredis": "6.0.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@forge/config": "workspace:*",
+    "@types/node": "26.6.3",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}
