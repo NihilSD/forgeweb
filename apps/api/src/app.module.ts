@@ -36,6 +36,8 @@ import {
   SubmissionsController,
 } from './submissions/submissions.controller.js';
 import { SubmissionsService } from './submissions/submissions.service.js';
+import { FlagsService } from './flags/flags.service.js';
+import { WorkspaceController } from './workspace/workspace.controller.js';
 import { PrismaService } from './infra/prisma.service.js';
 import { UsersController } from './users/users.controller.js';
 
@@ -82,25 +84,65 @@ export class ProblemsModule {}
 
 @Module({
   imports: [ProblemsModule],
-  controllers: [SubmissionsController, RunnerCallbackController],
-  providers: [SubmissionsService, RunnerQueueService],
-  exports: [SubmissionsService],
+  controllers: [SubmissionsController, RunnerCallbackController, WorkspaceController],
+  providers: [SubmissionsService, RunnerQueueService, FlagsService],
+  exports: [SubmissionsService, FlagsService],
 })
 export class SubmissionsModule implements OnModuleInit {
   constructor(
     @Inject(SolvedService) private readonly solved: SolvedService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(DataExportService) private readonly exporter: DataExportService,
   ) {}
 
   onModuleInit() {
+    const db = this.prisma.client;
+    this.exporter.register('submissions', (userId) =>
+      db.submission.findMany({
+        where: { userId },
+        select: {
+          problem: { select: { slug: true } },
+          language: true,
+          kind: true,
+          verdict: true,
+          code: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
+    this.exporter.register('drafts', (userId) =>
+      db.draft.findMany({
+        where: { userId },
+        select: {
+          problem: { select: { slug: true } },
+          language: true,
+          code: true,
+          updatedAt: true,
+        },
+      }),
+    );
+    this.exporter.register('flagSubmissions', (userId) =>
+      db.flagSubmission.findMany({
+        where: { userId },
+        select: { problem: { select: { slug: true } }, correct: true, createdAt: true },
+      }),
+    );
     // A problem is solved once the user has an Accepted practice submission for it.
     this.solved.resolver = async (userId) => {
-      const rows = await this.prisma.client.submission.findMany({
-        where: { userId, kind: 'submit', verdict: 'accepted', attemptId: null },
-        distinct: ['problemId'],
-        select: { problemId: true },
-      });
-      return new Set(rows.map((r) => r.problemId));
+      const [code, flags] = await Promise.all([
+        db.submission.findMany({
+          where: { userId, kind: 'submit', verdict: 'accepted', attemptId: null },
+          distinct: ['problemId'],
+          select: { problemId: true },
+        }),
+        db.flagSubmission.findMany({
+          where: { userId, correct: true },
+          distinct: ['problemId'],
+          select: { problemId: true },
+        }),
+      ]);
+      return new Set([...code, ...flags].map((r) => r.problemId));
     };
   }
 }

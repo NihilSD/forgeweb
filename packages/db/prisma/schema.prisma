@@ -46,13 +46,15 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  sessions      Session[]
-  submissions   Submission[]
-  oauthAccounts OAuthAccount[]
-  totpSecret    TotpSecret?
-  recoveryCodes RecoveryCode[]
-  emailTokens   EmailToken[]
-  auditLogs     AuditLog[]     @relation("AuditActor")
+  sessions        Session[]
+  submissions     Submission[]
+  drafts          Draft[]
+  flagSubmissions FlagSubmission[] @relation("FlagSubmitter")
+  oauthAccounts   OAuthAccount[]
+  totpSecret      TotpSecret?
+  recoveryCodes   RecoveryCode[]
+  emailTokens     EmailToken[]
+  auditLogs       AuditLog[]       @relation("AuditActor")
 
   @@index([deletionRequestedAt])
 }
@@ -186,31 +188,34 @@ enum Difficulty {
 }
 
 model Problem {
-  id             String           @id @default(uuid()) @db.Uuid
-  slug           String           @unique
-  trackId        String           @db.Uuid
-  track          Track            @relation(fields: [trackId], references: [id])
-  title          String
-  difficulty     Difficulty
+  id              String                   @id @default(uuid()) @db.Uuid
+  slug            String                   @unique
+  trackId         String                   @db.Uuid
+  track           Track                    @relation(fields: [trackId], references: [id])
+  title           String
+  difficulty      Difficulty
   /// Starts from difficulty (spec 8); recalculated weekly from verified solve rates (v1).
-  rating         Int
-  tags           String[]
-  formats        String[]
-  languages      String[]
-  mode           ProblemMode
-  status         ProblemStatus    @default(draft)
-  reviewStatus   ReviewStatus     @default(needs_review)
+  rating          Int
+  tags            String[]
+  formats         String[]
+  languages       String[]
+  mode            ProblemMode
+  status          ProblemStatus            @default(draft)
+  reviewStatus    ReviewStatus             @default(needs_review)
   /// Current version number (ProblemVersion.version).
-  version        Int
-  publishedAt    DateTime?
+  version         Int
+  publishedAt     DateTime?
   /// Title, tags and slug, maintained by the importer; source of `search`.
-  searchText     String           @default("")
+  searchText      String                   @default("")
   /// Generated tsvector (see the l3 migration); read-only.
-  search         Unsupported("tsvector")?    @default(dbgenerated("to_tsvector('simple'::regconfig, \"searchText\")"))
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  versions       ProblemVersion[]
-  submissions    Submission[]
+  search          Unsupported("tsvector")? @default(dbgenerated("to_tsvector('simple'::regconfig, \"searchText\")"))
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  versions        ProblemVersion[]
+  submissions     Submission[]
+  drafts          Draft[]
+  flagIssues      FlagIssue[]
+  flagSubmissions FlagSubmission[]
 
   @@index([trackId, status])
   @@index([status, difficulty])
@@ -306,4 +311,57 @@ model Submission {
   @@unique([userId, idempotencyKey])
   @@index([userId, problemId, createdAt])
   @@index([status, createdAt])
+}
+
+// ---------------------------------------------------------------- L5: workspace
+
+/**
+ * Autosaved editor contents, one per user, problem and language.
+ */
+model Draft {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId String   @db.Uuid
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  language  String
+  code      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, problemId, language])
+}
+
+// ---------------------------------------------------------------- L5/L7: flag challenges
+
+/// Which flag was issued to which user, so a flag submitted by someone else can be traced
+/// (spec 3.4: a flag from the wrong user is recorded as a sharing signal).
+model FlagIssue {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  problemId String   @db.Uuid
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  /// sha256 of the flag; the flag itself is never stored.
+  flagHash  String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, problemId])
+}
+
+model FlagSubmission {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  user       User     @relation("FlagSubmitter", fields: [userId], references: [id], onDelete: Cascade)
+  problemId  String   @db.Uuid
+  problem    Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  valueHash  String
+  correct    Boolean
+  /// Set when the value is another user's flag.
+  sharedFrom String?  @db.Uuid
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, problemId])
+  @@index([sharedFrom])
 }

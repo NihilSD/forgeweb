@@ -1,4 +1,5 @@
-import { execSync } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
 
@@ -31,4 +32,30 @@ export default async function globalSetup() {
     stdio: 'pipe',
   });
   await fetch(`${MAILPIT_URL}/api/v1/messages`, { method: 'DELETE' }).catch(() => undefined);
+
+  // The runner opens no ports (by design), so Playwright's webServer can't wait on it; start it
+  // here and stop it in global-teardown. Development runners use runc; production requires gVisor.
+  if (!process.env.E2E_EXTERNAL_RUNNER) {
+    const runner = spawn('pnpm', ['exec', 'tsx', 'src/main.ts'], {
+      cwd: resolve(import.meta.dirname, '../../runner'),
+      env: { ...process.env, NODE_ENV: 'development', RUNNER_RUNTIME: 'runc', RUNNER_ID: 'e2e' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true,
+    });
+    await new Promise<void>((ok, fail) => {
+      const timer = setTimeout(() => fail(new Error('runner did not start')), 60_000);
+      runner.stdout.on('data', (d: Buffer) => {
+        if (d.toString().includes('ready')) {
+          clearTimeout(timer);
+          ok();
+        }
+      });
+      runner.on('exit', (code) => fail(new Error(`runner exited with ${code}`)));
+    });
+    mkdirSync(resolve(import.meta.dirname, '../test-results'), { recursive: true });
+    writeFileSync(RUNNER_PID_FILE, String(runner.pid));
+    runner.unref();
+  }
 }
+
+export const RUNNER_PID_FILE = resolve(import.meta.dirname, '../test-results/.runner.pid');

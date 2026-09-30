@@ -13,6 +13,8 @@ export interface GradedTest {
   args?: unknown[];
   expected?: unknown;
   actual?: unknown;
+  /** SQL: column names of the user's result. */
+  columns?: string[];
   stdout?: string;
   error?: string;
 }
@@ -101,6 +103,7 @@ export function grade(
             args: test.args ?? [],
             expected: test.expected,
             ...(r && r.status === 'ok' ? { actual: r.value } : {}),
+            ...(r?.columns ? { columns: r.columns } : {}),
             ...(r?.stdout ? { stdout: r.stdout } : {}),
             ...(r?.error ? { error: r.error } : {}),
           }

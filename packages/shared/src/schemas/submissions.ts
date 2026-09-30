@@ -32,6 +32,7 @@ export const gradedTestSchema = z.object({
   args: z.array(z.unknown()).optional(),
   expected: z.unknown().optional(),
   actual: z.unknown().optional(),
+  columns: z.array(z.string()).optional(),
   stdout: z.string().optional(),
   error: z.string().optional(),
 });
@@ -66,3 +67,20 @@ export const submissionListSchema = z.object({
     submissionSchema.omit({ tests: true, customOutput: true }).extend({ code: z.string() }),
   ),
 });
+
+export const draftSchema = z.object({
+  language: z.enum(LANGUAGES),
+  code: z.string(),
+  updatedAt: z.string(),
+});
+export const draftListSchema = z.object({ items: z.array(draftSchema) });
+export const saveDraftSchema = z.object({ code: z.string().max(MAX_CODE_BYTES) });
+
+export const flagFileSchema = z.object({
+  name: z.string(),
+  url: z.string(),
+  expiresAt: z.string(),
+});
+export const flagFilesSchema = z.object({ items: z.array(flagFileSchema) });
+export const flagSubmitSchema = z.object({ flag: z.string().trim().min(1).max(200) });
+export const flagResultSchema = z.object({ correct: z.boolean(), message: z.string() });
