@@ -1,0 +1,4 @@
+{
+  "extends": "@forge/config/tsconfig.react.json",
+  "include": ["src"]
+}

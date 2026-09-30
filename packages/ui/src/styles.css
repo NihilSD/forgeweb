@@ -1,0 +1,119 @@
+/*
+ * Forge design tokens (spec section 9). Dark is the default; light is a full theme.
+ * Colours are chosen for 4.5:1 contrast on their backgrounds (WCAG 2.2 AA).
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #0b1220;
+  --muted: #f1f4f8;
+  --muted-foreground: #4a5568;
+  --card: #ffffff;
+  --card-foreground: #0b1220;
+  --border: #d9e0e8;
+  --input: #c9d2dd;
+  --ring: #2563eb;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f7;
+  --secondary-foreground: #0b1220;
+  --accent: #e8effc;
+  --accent-foreground: #1e3a8a;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+  --success: #15803d;
+  --warning: #a16207;
+  --verdict-accepted: #15803d;
+  --verdict-wrong: #b91c1c;
+  --verdict-limit: #a16207;
+  --verdict-error: #9333ea;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: #0b0f17;
+  --foreground: #e6ebf2;
+  --muted: #141a25;
+  --muted-foreground: #9aa6b8;
+  --card: #10151f;
+  --card-foreground: #e6ebf2;
+  --border: #232b38;
+  --input: #2c3645;
+  --ring: #3b82f6;
+  --primary: #3b82f6;
+  --primary-foreground: #06101f;
+  --secondary: #1a2130;
+  --secondary-foreground: #e6ebf2;
+  --accent: #172238;
+  --accent-foreground: #bcd4ff;
+  --destructive: #f87171;
+  --destructive-foreground: #1b0707;
+  --success: #4ade80;
+  --warning: #facc15;
+  --verdict-accepted: #4ade80;
+  --verdict-wrong: #f87171;
+  --verdict-limit: #facc15;
+  --verdict-error: #c084fc;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-verdict-accepted: var(--verdict-accepted);
+  --color-verdict-wrong: var(--verdict-wrong);
+  --color-verdict-limit: var(--verdict-limit);
+  --color-verdict-error: var(--verdict-error);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

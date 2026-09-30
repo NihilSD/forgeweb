@@ -1,0 +1,18 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+allowBuilds:
+  argon2: true
+  esbuild: true
+  prisma: true
+  '@prisma/engines': true
+  sharp: true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@nestjs/common@12.1.2'
+  - '@nestjs/core@12.1.2'
+  - '@nestjs/platform-express@12.1.2'
+  - '@vitest/mocker@5.0.3'
+  - '@vitest/spy@5.0.3'
+  - lucide-react@1.49.0
+  - vitest@5.0.3

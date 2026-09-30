@@ -1,0 +1,11 @@
+{
+  "extends": "@forge/config/tsconfig.node.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": false,
+    "declaration": false
+  },
+  "include": ["src", "test"]
+}

@@ -1,0 +1,13 @@
+// Forge data model. See docs/SPEC.pdf section 4.
+// Every model has id (UUID), createdAt and updatedAt.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
