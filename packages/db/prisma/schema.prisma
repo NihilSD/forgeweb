@@ -47,6 +47,7 @@ model User {
   updatedAt           DateTime  @updatedAt
 
   sessions      Session[]
+  submissions   Submission[]
   oauthAccounts OAuthAccount[]
   totpSecret    TotpSecret?
   recoveryCodes RecoveryCode[]
@@ -205,10 +206,11 @@ model Problem {
   /// Title, tags and slug, maintained by the importer; source of `search`.
   searchText     String           @default("")
   /// Generated tsvector (see the l3 migration); read-only.
-  search         Unsupported("tsvector")?
+  search         Unsupported("tsvector")?    @default(dbgenerated("to_tsvector('simple'::regconfig, \"searchText\")"))
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   versions       ProblemVersion[]
+  submissions    Submission[]
 
   @@index([trackId, status])
   @@index([status, difficulty])
@@ -243,4 +245,65 @@ model ProblemVersion {
 
   @@unique([problemId, version])
   @@index([packageHash])
+}
+
+// ---------------------------------------------------------------- L4: submissions
+
+enum SubmissionKind {
+  run
+  submit
+}
+
+enum SubmissionStatus {
+  queued
+  running
+  done
+}
+
+enum Verdict {
+  accepted
+  wrong_answer
+  time_limit
+  memory_limit
+  output_limit
+  runtime_error
+  compile_error
+  internal_error
+}
+
+model Submission {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @db.Uuid
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId      String           @db.Uuid
+  problem        Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  version        Int
+  language       String
+  code           String
+  kind           SubmissionKind
+  status         SubmissionStatus @default(queued)
+  verdict        Verdict?
+  runtimeMs      Int?
+  memoryKb       Int?
+  testsPassed    Int?
+  testsTotal     Int?
+  /// Instance seed the tests were generated from (hidden tests are regenerated, never stored).
+  seed           Int
+  /// Custom-input runs: the arguments the user supplied.
+  customInput    Json?
+  /// Graded, client-safe view: visible test details and hidden categories only.
+  result         Json?
+  /// Current runner job id; a callback for any other id is rejected.
+  jobId          String?          @unique
+  attempts       Int              @default(0)
+  idempotencyKey String?
+  /// Verified attempt (phase L8).
+  attemptId      String?          @db.Uuid
+  finishedAt     DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, problemId, createdAt])
+  @@index([status, createdAt])
 }

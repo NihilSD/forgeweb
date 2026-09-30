@@ -5,3 +5,4 @@ export * from './schemas/common.js';
 export * from './schemas/auth.js';
 export * from './verdicts.js';
 export * from './schemas/problems.js';
+export * from './schemas/submissions.js';

@@ -33,7 +33,11 @@ export class DockerExecutor implements Executor {
   private readonly docker: string;
 
   constructor(private readonly cfg: DockerExecutorConfig) {
-    if (cfg.runtime !== 'runsc' && process.env.NODE_ENV === 'production' && process.env.RUNNER_ALLOW_RUNC !== 'true') {
+    if (
+      cfg.runtime !== 'runsc' &&
+      process.env.NODE_ENV === 'production' &&
+      process.env.RUNNER_ALLOW_RUNC !== 'true'
+    ) {
       throw new Error('Production runners must use the gVisor runtime (runsc).');
     }
     this.docker = cfg.dockerBin ?? 'docker';
@@ -43,22 +47,37 @@ export class DockerExecutor implements Executor {
   /** The docker arguments that isolate a run. Exposed for the attack-suite report. */
   isolationArgs(memoryMb: number, tmpfsMb: number, user: string): string[] {
     return [
-      '--runtime', this.cfg.runtime,
-      '--network', 'none',
+      '--runtime',
+      this.cfg.runtime,
+      '--network',
+      'none',
       '--read-only',
-      '--tmpfs', `/tmp:rw,nosuid,nodev,size=${tmpfsMb}m,mode=1777`,
-      '--cap-drop', 'ALL',
-      '--security-opt', 'no-new-privileges',
-      '--pids-limit', String(this.cfg.pidsLimit ?? 64),
-      '--memory', `${memoryMb}m`,
-      '--memory-swap', `${memoryMb}m`,
-      '--cpus', String(this.cfg.cpus ?? 1),
-      '--ulimit', 'fsize=16777216:16777216',
-      '--ulimit', 'nofile=256:256',
-      '--ulimit', 'core=0:0',
-      '--user', user,
-      '--ipc', 'none',
-      '--log-driver', 'none',
+      '--tmpfs',
+      `/tmp:rw,nosuid,nodev,size=${tmpfsMb}m,mode=1777`,
+      '--cap-drop',
+      'ALL',
+      '--security-opt',
+      'no-new-privileges',
+      '--pids-limit',
+      String(this.cfg.pidsLimit ?? 64),
+      '--memory',
+      `${memoryMb}m`,
+      '--memory-swap',
+      `${memoryMb}m`,
+      '--cpus',
+      String(this.cfg.cpus ?? 1),
+      '--ulimit',
+      'fsize=16777216:16777216',
+      '--ulimit',
+      'nofile=256:256',
+      '--ulimit',
+      'core=0:0',
+      '--user',
+      user,
+      '--ipc',
+      'none',
+      '--log-driver',
+      'none',
     ];
   }
 
@@ -67,7 +86,14 @@ export class DockerExecutor implements Executor {
       if (!TEST_ID.test(t.id)) return internal(`invalid test id ${JSON.stringify(t.id)}`);
     }
     const prepared = await prepareSource(request.language, request.code, request.entry);
-    if (!prepared.ok) return { status: 'compile_error', tests: [], timeMs: 0, memoryKb: null, message: prepared.error };
+    if (!prepared.ok)
+      return {
+        status: 'compile_error',
+        tests: [],
+        timeMs: 0,
+        memoryKb: null,
+        message: prepared.error,
+      };
 
     const dir = await mkdtemp(join(this.cfg.workRoot ?? tmpdir(), 'forge-run-'));
     const name = `forge-run-${randomUUID()}`;
@@ -100,21 +126,35 @@ export class DockerExecutor implements Executor {
       } else {
         const node = request.language !== 'python';
         image = node ? this.cfg.images.node : this.cfg.images.python;
-        await put('request.json', JSON.stringify({ entry: request.entry, tests: request.tests, limits: request.limits }));
+        await put(
+          'request.json',
+          JSON.stringify({ entry: request.entry, tests: request.tests, limits: request.limits }),
+        );
         await put(prepared.filename, prepared.source);
         cmd = ['/work/request.json', `/work/${prepared.filename}`];
         if (node) {
           // V8 reports heap exhaustion cleanly just below the cgroup limit.
-          cmd = [`--max-old-space-size=${Math.max(32, memoryMb - 32)}`, '/opt/forge/harness.mjs', ...cmd];
+          cmd = [
+            `--max-old-space-size=${Math.max(32, memoryMb - 32)}`,
+            '/opt/forge/harness.mjs',
+            ...cmd,
+          ];
         }
       }
 
       const args = [
-        'run', '--rm', '--name', name,
+        'run',
+        '--rm',
+        '--name',
+        name,
         ...this.isolationArgs(memoryMb, tmpfsMb, user),
-        '-v', `${dir}:/work:ro`,
-        '--workdir', '/tmp',
-        ...(request.language !== 'python' && request.language !== 'sql' ? ['--entrypoint', 'node'] : []),
+        '-v',
+        `${dir}:/work:ro`,
+        '--workdir',
+        '/tmp',
+        ...(request.language !== 'python' && request.language !== 'sql'
+          ? ['--entrypoint', 'node']
+          : []),
         image,
         ...cmd,
       ];
@@ -123,17 +163,24 @@ export class DockerExecutor implements Executor {
         startupMs: request.language === 'sql' ? 30_000 : 15_000,
         perResultMs: request.language === 'sql' ? perTest + 5000 : perTest,
         totalMs: request.limits.timeMs * Math.max(1, request.tests.length) + 60_000,
-        maxStdoutBytes: (request.limits.outputKb * 1024 * 2 + 16_384) * Math.max(1, request.tests.length) + 65_536,
+        maxStdoutBytes:
+          (request.limits.outputKb * 1024 * 2 + 16_384) * Math.max(1, request.tests.length) +
+          65_536,
         onKill: () => {
           spawn(this.docker, ['kill', name], { stdio: 'ignore' }).on('error', () => undefined);
         },
       });
 
-      if (/Unable to find image|No such image|Cannot connect to the Docker daemon|unknown or invalid runtime/i.test(proc.stderr)) {
+      if (
+        /Unable to find image|No such image|Cannot connect to the Docker daemon|unknown or invalid runtime/i.test(
+          proc.stderr,
+        )
+      ) {
         return internal(`runner misconfigured: ${proc.stderr.trim().split('\n').pop()}`);
       }
       const outOfMemory =
-        (!proc.timedOut && proc.exitCode === 137) || /heap out of memory|MemoryError|Cannot allocate memory/i.test(proc.stderr);
+        (!proc.timedOut && proc.exitCode === 137) ||
+        /heap out of memory|MemoryError|Cannot allocate memory/i.test(proc.stderr);
       let results = proc.results;
       if (request.language === 'sql') results = decodeSqlLines(results);
       const parsed = parseHarnessOutput(request, { ...proc, results, outOfMemory, memoryKb: null });
@@ -176,7 +223,11 @@ function decodeSqlLines(results: string): string {
         out.value = rows.slice(1);
       }
       if (typeof obj.errorB64 === 'string') {
-        out.error = Buffer.from(obj.errorB64, 'base64').toString('utf8').replace(/^psql:[^:]*:\d+: /gm, '').trim().slice(0, 2000);
+        out.error = Buffer.from(obj.errorB64, 'base64')
+          .toString('utf8')
+          .replace(/^psql:[^:]*:\d+: /gm, '')
+          .trim()
+          .slice(0, 2000);
       }
       return JSON.stringify(out);
     })

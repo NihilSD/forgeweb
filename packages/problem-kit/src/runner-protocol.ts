@@ -69,11 +69,19 @@ export function signJob(keys: KeySet, job: RunnerJob): SignedJob {
 
 export function verifyJob(keys: KeySet, signed: SignedJob, now = Date.now()): RunnerJob {
   const secret = keys.all.get(signed.keyId);
-  if (!secret || typeof signed.signature !== 'string' || !equal(signed.signature, mac(secret, `job.${signed.payload}`))) {
+  if (
+    !secret ||
+    typeof signed.signature !== 'string' ||
+    !equal(signed.signature, mac(secret, `job.${signed.payload}`))
+  ) {
     throw new Error('job signature invalid');
   }
   const job = JSON.parse(signed.payload) as RunnerJob;
-  if (typeof job.issuedAt !== 'number' || now - job.issuedAt > MAX_JOB_AGE_MS || job.issuedAt - now > MAX_CALLBACK_SKEW_MS) {
+  if (
+    typeof job.issuedAt !== 'number' ||
+    now - job.issuedAt > MAX_JOB_AGE_MS ||
+    job.issuedAt - now > MAX_CALLBACK_SKEW_MS
+  ) {
     throw new Error('job expired');
   }
   return job;
@@ -103,6 +111,7 @@ export function verifyCallback(
   const ts = Number(headers['x-forge-timestamp']);
   const secret = headers['x-forge-key'] ? keys.all.get(headers['x-forge-key']) : undefined;
   const sig = headers['x-forge-signature'];
-  if (!secret || !sig || !Number.isFinite(ts) || Math.abs(now - ts) > MAX_CALLBACK_SKEW_MS) return false;
+  if (!secret || !sig || !Number.isFinite(ts) || Math.abs(now - ts) > MAX_CALLBACK_SKEW_MS)
+    return false;
   return equal(sig, mac(secret, `${ts}.${body}`));
 }

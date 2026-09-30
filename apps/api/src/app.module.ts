@@ -1,4 +1,11 @@
-import { Global, type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
+import {
+  Global,
+  Inject,
+  type MiddlewareConsumer,
+  Module,
+  type NestModule,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AdminController } from './admin/admin.controller.js';
 import { AuditService } from './audit/audit.service.js';
@@ -23,6 +30,13 @@ import { AdminProblemsController } from './problems/admin-problems.controller.js
 import { ContentService } from './problems/content.service.js';
 import { ProblemsController } from './problems/problems.controller.js';
 import { SolvedService } from './problems/solved.service.js';
+import { RunnerQueueService } from './submissions/runner-queue.service.js';
+import {
+  RunnerCallbackController,
+  SubmissionsController,
+} from './submissions/submissions.controller.js';
+import { SubmissionsService } from './submissions/submissions.service.js';
+import { PrismaService } from './infra/prisma.service.js';
 import { UsersController } from './users/users.controller.js';
 
 /** Cross-cutting services every feature module may inject. */
@@ -67,7 +81,39 @@ export class AdminModule {}
 export class ProblemsModule {}
 
 @Module({
-  imports: [InfraModule, CoreModule, AccountsModule, AdminModule, ProblemsModule],
+  imports: [ProblemsModule],
+  controllers: [SubmissionsController, RunnerCallbackController],
+  providers: [SubmissionsService, RunnerQueueService],
+  exports: [SubmissionsService],
+})
+export class SubmissionsModule implements OnModuleInit {
+  constructor(
+    @Inject(SolvedService) private readonly solved: SolvedService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
+
+  onModuleInit() {
+    // A problem is solved once the user has an Accepted practice submission for it.
+    this.solved.resolver = async (userId) => {
+      const rows = await this.prisma.client.submission.findMany({
+        where: { userId, kind: 'submit', verdict: 'accepted', attemptId: null },
+        distinct: ['problemId'],
+        select: { problemId: true },
+      });
+      return new Set(rows.map((r) => r.problemId));
+    };
+  }
+}
+
+@Module({
+  imports: [
+    InfraModule,
+    CoreModule,
+    AccountsModule,
+    AdminModule,
+    ProblemsModule,
+    SubmissionsModule,
+  ],
   controllers: [HealthController],
   providers: [
     { provide: APP_FILTER, useClass: ErrorFilter },

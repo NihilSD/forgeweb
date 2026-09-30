@@ -6,10 +6,11 @@ import { findPackages } from './build.js';
 import { DevExecutor } from './exec/dev-executor.js';
 import { validatePackage } from './validate.js';
 
-const USAGE = `forge-problems validate <dir> [--seeds 50] [--only <id>] [--json]
+const USAGE = `forge-problems validate <dir> [--seeds 50] [--only <id>] [--json] [--executor dev|docker]
 
 Validates every problem package under <dir> (or <dir> itself if it contains problem.yaml)
-using the development executor. Exits 1 if any package is invalid.`;
+using the development executor (default, content authoring) or the real sandboxes
+(--executor docker; needs sandboxes/build.sh). Exits 1 if any package is invalid.`;
 
 function loadRootEnv() {
   const rootEnv = resolve(import.meta.dirname, '../../../.env');
@@ -24,6 +25,7 @@ async function main() {
       seeds: { type: 'string', default: '50' },
       only: { type: 'string' },
       json: { type: 'boolean', default: false },
+      executor: { type: 'string', default: 'dev' },
     },
   });
   const [command, target] = positionals;
@@ -39,7 +41,18 @@ async function main() {
     process.exit(1);
   }
 
-  const executor = new DevExecutor();
+  const executor =
+    values.executor === 'docker'
+      ? new (await import('./exec/docker-executor.js')).DockerExecutor({
+          runtime: (process.env.RUNNER_RUNTIME as 'runsc' | 'runc' | undefined) ?? 'runc',
+          images: {
+            python: process.env.RUNNER_IMAGE_PYTHON ?? 'forge-sandbox-python:latest',
+            node: process.env.RUNNER_IMAGE_NODE ?? 'forge-sandbox-node:latest',
+            sql: process.env.RUNNER_IMAGE_SQL ?? 'forge-sandbox-postgres-sql:latest',
+          },
+        })
+      : new DevExecutor();
+  if (!values.json) console.info(`executor: ${executor.name}`);
   const seeds = Number(values.seeds);
   let failed = 0;
   const reports = [];

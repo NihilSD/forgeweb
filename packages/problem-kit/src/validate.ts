@@ -25,6 +25,7 @@ export interface ValidateOptions {
 }
 
 const VALIDATOR_FLAG_SECRET = 'forge-validator-flag-secret';
+const VALIDATE_CONCURRENCY = Number(process.env.VALIDATE_CONCURRENCY ?? 6);
 
 /** Spec 5 validator rules. Never throws for a bad package: problems go in `errors`. */
 export async function validatePackage(
@@ -154,43 +155,50 @@ async function runAcrossSeeds(
     groups.set(code, [...(groups.get(code) ?? []), i]);
   }
   const outcomes: Outcome[] = [];
-  for (const [code, group] of groups) {
-    const tests = group.flatMap((i) =>
-      [...i.suite.visible, ...i.suite.hidden].map((t) => ({
-        id: `${i.seed}:${t.id}`,
-        ...(t.args ? { args: t.args } : {}),
-        ...(t.setupSql ? { setupSql: t.setupSql } : {}),
-      })),
-    );
-    const request: ExecRequest = {
-      language,
-      code,
-      ...(pkg.manifest.entry?.[language] ? { entry: pkg.manifest.entry[language] } : {}),
-      tests,
-      limits: pkg.manifest.limits,
-    };
-    const result = await executor.run(request);
-    for (const i of group) {
-      const prefix = `${i.seed}:`;
-      const suite = {
-        visible: i.suite.visible.map((t) => ({ ...t, id: prefix + t.id })),
-        hidden: i.suite.hidden.map((t) => ({ ...t, id: prefix + t.id })),
-      };
-      const g = grade(
-        suite,
-        { ...result, tests: result.tests.filter((t) => t.id.startsWith(prefix)) },
-        pkg.manifest.comparator,
+  // Groups are independent: run them concurrently (executors are safe to call in parallel).
+  const entries = [...groups];
+  let next = 0;
+  const worker = async () => {
+    while (next < entries.length) {
+      const [code, group] = entries[next++]!;
+      const tests = group.flatMap((i) =>
+        [...i.suite.visible, ...i.suite.hidden].map((t) => ({
+          id: `${i.seed}:${t.id}`,
+          ...(t.args ? { args: t.args } : {}),
+          ...(t.setupSql ? { setupSql: t.setupSql } : {}),
+        })),
       );
-      const failed = g.tests.find((t) => !t.passed);
-      outcomes.push({
-        seed: i.seed,
-        passed: g.verdict === 'accepted',
-        detail: failed
-          ? `${g.verdict} on "${failed.category}"${g.message ? `: ${g.message}` : ''}${failed.error ? `: ${failed.error.split('\n').pop()}` : ''}`
-          : g.verdict,
-      });
+      const request: ExecRequest = {
+        language,
+        code,
+        ...(pkg.manifest.entry?.[language] ? { entry: pkg.manifest.entry[language] } : {}),
+        tests,
+        limits: pkg.manifest.limits,
+      };
+      const result = await executor.run(request);
+      for (const i of group) {
+        const prefix = `${i.seed}:`;
+        const suite = {
+          visible: i.suite.visible.map((t) => ({ ...t, id: prefix + t.id })),
+          hidden: i.suite.hidden.map((t) => ({ ...t, id: prefix + t.id })),
+        };
+        const g = grade(
+          suite,
+          { ...result, tests: result.tests.filter((t) => t.id.startsWith(prefix)) },
+          pkg.manifest.comparator,
+        );
+        const failed = g.tests.find((t) => !t.passed);
+        outcomes.push({
+          seed: i.seed,
+          passed: g.verdict === 'accepted',
+          detail: failed
+            ? `${g.verdict} on "${failed.category}"${g.message ? `: ${g.message}` : ''}${failed.error ? `: ${failed.error.split('\n').pop()}` : ''}`
+            : g.verdict,
+        });
+      }
     }
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(VALIDATE_CONCURRENCY, entries.length) }, worker));
   return outcomes.sort((a, b) => a.seed - b.seed);
 }
 

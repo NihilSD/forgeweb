@@ -22,6 +22,11 @@ export async function createApp(opts: { logger?: boolean } = {}): Promise<INestA
   app.use(securityHeaders(env.NODE_ENV === 'production'));
   // Stripe webhooks need the raw body for signature verification.
   app.use('/api/v1/billing/webhook', express.raw({ type: 'application/json', limit: '1mb' }));
+  // Runner callbacks are HMAC-signed over the exact bytes sent.
+  app.use(
+    '/api/v1/internal/runner/callback',
+    express.raw({ type: 'application/json', limit: '8mb' }),
+  );
   app.use(express.json({ limit: '256kb' }));
   app.use(cookieParser());
   app.setGlobalPrefix(API_PREFIX);

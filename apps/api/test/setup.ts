@@ -5,3 +5,6 @@ process.env.REDIS_URL ??= 'redis://localhost:6379/1';
 process.env.APP_SECRET ??= 'test-secret-test-secret-test-secret-000';
 process.env.ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString('base64');
 process.env.COOKIE_SECURE ??= 'true';
+process.env.RUNNER_REDIS_URL ??= 'redis://localhost:6379/4';
+process.env.RUNNER_JOB_SIGNING_KEYS ??= 'k1:test-job-signing-secret-000000000000000';
+process.env.RUNNER_CALLBACK_KEYS ??= 'c1:test-callback-secret-00000000000000000000';

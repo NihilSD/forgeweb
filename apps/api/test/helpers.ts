@@ -16,7 +16,7 @@ export interface TestContext {
 }
 
 export async function createTestContext(): Promise<TestContext> {
-  const app = await createApp({ logger: false });
+  const app = await createApp({ logger: process.env.DEBUG_API === '1' });
   await app.init();
   const prisma = app.get(PrismaService).client;
   const redis = app.get(RedisService).client;

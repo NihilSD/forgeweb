@@ -64,7 +64,10 @@ def f():
     });
 
     it('only the loopback interface exists', async () => {
-      const res = await runF('python', `import socket\ndef f():\n    return sorted(n for _, n in socket.if_nameindex())`);
+      const res = await runF(
+        'python',
+        `import socket\ndef f():\n    return sorted(n for _, n in socket.if_nameindex())`,
+      );
       expect(value(res)).toEqual(['lo']);
     });
   });
@@ -95,7 +98,12 @@ def f():
         "host_procs": len([p for p in os.listdir("/proc") if p.isdigit()]),
     }`,
       );
-      const v = value(res) as { repo: boolean; docker_sock: boolean; work: string[]; host_procs: number };
+      const v = value(res) as {
+        repo: boolean;
+        docker_sock: boolean;
+        work: string[];
+        host_procs: number;
+      };
       expect(v.repo).toBe(false);
       expect(v.docker_sock).toBe(false);
       expect(v.work).toEqual(['request.json', 'solution.py']);
@@ -105,7 +113,9 @@ def f():
     it('has no secrets in its environment', async () => {
       const res = await runF('python', `import os\ndef f():\n    return sorted(os.environ.keys())`);
       const keys = value(res) as unknown as string[];
-      expect(keys.filter((k) => /SECRET|KEY|TOKEN|PASS|DATABASE|REDIS|STRIPE|AWS/i.test(k))).toEqual([]);
+      expect(
+        keys.filter((k) => /SECRET|KEY|TOKEN|PASS|DATABASE|REDIS|STRIPE|AWS/i.test(k)),
+      ).toEqual([]);
     });
   });
 
@@ -202,7 +212,10 @@ def f():
     });
 
     it('javascript: unbounded growth gives Memory Limit', async () => {
-      const res = await runF('javascript', `function f() { const a = []; while (true) a.push(new Array(100000).fill(1)); }`);
+      const res = await runF(
+        'javascript',
+        `function f() { const a = []; while (true) a.push(new Array(100000).fill(1)); }`,
+      );
       expect(res.tests[0]?.status === 'memory_limit' || res.status === 'memory_limit').toBe(true);
     });
 
@@ -230,7 +243,10 @@ def f():
     });
 
     it('output flood gives Output Limit', async () => {
-      const res = await runF('python', `import os\ndef f():\n    while True:\n        os.write(1, b"x" * 65536)`);
+      const res = await runF(
+        'python',
+        `import os\ndef f():\n    while True:\n        os.write(1, b"x" * 65536)`,
+      );
       expect(res.status === 'output_limit' || res.tests[0]?.status === 'output_limit').toBe(true);
     });
   });
@@ -249,7 +265,12 @@ def f():
         became_root = False
     return {"uid": os.getuid(), "cap_eff": status["CapEff"].strip(), "no_new_privs": status["NoNewPrivs"].strip(), "became_root": became_root}`,
       );
-      expect(value(res)).toEqual({ uid: 10001, cap_eff: '0000000000000000', no_new_privs: '1', became_root: false });
+      expect(value(res)).toEqual({
+        uid: 10001,
+        cap_eff: '0000000000000000',
+        no_new_privs: '1',
+        became_root: false,
+      });
     });
 
     it('has no sudo or su to abuse', async () => {
@@ -321,6 +342,10 @@ def f():
     expect(spawnSync('true').status, 'host can still start processes').toBe(0);
     const s = statfsSync(tmpdir());
     expect(freeBefore - s.bavail * s.bsize, 'host disk usage grew').toBeLessThan(50 * 1024 * 1024);
-    expect(execFileSync('docker', ['info', '--format', '{{.ServerVersion}}'], { encoding: 'utf8' }).trim()).not.toBe('');
+    expect(
+      execFileSync('docker', ['info', '--format', '{{.ServerVersion}}'], {
+        encoding: 'utf8',
+      }).trim(),
+    ).not.toBe('');
   });
 });

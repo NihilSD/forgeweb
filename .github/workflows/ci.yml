@@ -14,6 +14,11 @@ concurrency:
 
 env:
   CI: 'true'
+  REQUIRE_DOCKER: '1'
+  RUNNER_RUNTIME: runc
+  RUNNER_REDIS_URL: redis://localhost:6379/4
+  RUNNER_JOB_SIGNING_KEYS: k1:ci-job-signing-secret-000000000000000000
+  RUNNER_CALLBACK_KEYS: c1:ci-callback-secret-00000000000000000000000
   DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_test
   E2E_DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_e2e
   REDIS_URL: redis://localhost:6379/1
@@ -51,12 +56,16 @@ jobs:
       - name: Create e2e database
         run: PGPASSWORD=forge psql -h localhost -U forge -d forge_test -c "CREATE DATABASE forge_e2e"
       - run: pnpm build
+      - name: Build sandbox images
+        run: ./sandboxes/build.sh
       - name: Lint and type-check
         run: pnpm lint && pnpm format:check
       - name: Unit and integration tests
         run: pnpm test
-      - name: Validate content packages
-        run: pnpm problems:validate
+      - name: Validate content packages in real sandboxes
+        run: pnpm problems:validate --executor docker
+        env:
+          RUNNER_RUNTIME: runc
       - name: Install Playwright browser
         run: pnpm --filter @forge/web exec playwright install --with-deps chromium
       - name: End-to-end tests

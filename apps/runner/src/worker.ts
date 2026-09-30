@@ -33,7 +33,10 @@ export async function postCallback(deps: WorkerDeps, body: RunnerCallback): Prom
     try {
       const res = await doFetch(deps.callbackUrl, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', ...signCallback(deps.callbackKeys, payload) },
+        headers: {
+          'content-type': 'application/json',
+          ...signCallback(deps.callbackKeys, payload),
+        },
         body: payload,
         signal: AbortSignal.timeout(10_000),
       });
@@ -64,19 +67,31 @@ export async function processJob(deps: WorkerDeps, signed: SignedJob): Promise<E
   try {
     result = await deps.executor.run(job.request);
   } catch (err) {
-    result = { status: 'internal_error', tests: [], timeMs: 0, memoryKb: null, message: (err as Error).message };
+    result = {
+      status: 'internal_error',
+      tests: [],
+      timeMs: 0,
+      memoryKb: null,
+      message: (err as Error).message,
+    };
   }
   // Never log code or outputs: only ids, status and timing.
-  deps.log?.(`job ${job.jobId} ${job.request.language} ${result.status} in ${Date.now() - started}ms`);
+  deps.log?.(
+    `job ${job.jobId} ${job.request.language} ${result.status} in ${Date.now() - started}ms`,
+  );
   await postCallback(deps, { jobId: job.jobId, runnerId: deps.runnerId, result });
   return result;
 }
 
 export function startWorker(deps: WorkerDeps): Worker {
-  return new Worker<SignedJob>(RUNNER_QUEUE, async (job) => void (await processJob(deps, job.data)), {
-    connection: deps.connection,
-    concurrency: deps.concurrency,
-    // A stuck sandbox is killed by the watchdog well before this.
-    lockDuration: 5 * 60_000,
-  });
+  return new Worker<SignedJob>(
+    RUNNER_QUEUE,
+    async (job) => void (await processJob(deps, job.data)),
+    {
+      connection: deps.connection,
+      concurrency: deps.concurrency,
+      // A stuck sandbox is killed by the watchdog well before this.
+      lockDuration: 5 * 60_000,
+    },
+  );
 }

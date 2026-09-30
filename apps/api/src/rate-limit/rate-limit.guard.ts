@@ -18,7 +18,8 @@ export const RATE_CLASSES = {
   read: { user: { limit: 600, windowSec: 60 }, anon: { limit: 240, windowSec: 60 } },
   write: { user: { limit: 120, windowSec: 60 }, anon: { limit: 30, windowSec: 60 } },
   search: { user: { limit: 60, windowSec: 60 }, anon: { limit: 20, windowSec: 60 } },
-  submission: { user: { limit: 30, windowSec: 60 }, anon: { limit: 0, windowSec: 60 } },
+  // Anonymous callers are rejected by auth anyway; a small budget lets them see 401, not 429.
+  submission: { user: { limit: 30, windowSec: 60 }, anon: { limit: 10, windowSec: 60 } },
 } satisfies Record<string, { user: Limit; anon: Limit }>;
 export type RateClass = keyof typeof RATE_CLASSES;
 

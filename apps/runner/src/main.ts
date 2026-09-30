@@ -8,7 +8,11 @@ const env = loadRunnerEnv();
 const connection = new Redis(env.RUNNER_REDIS_URL, { maxRetriesPerRequest: null });
 const executor = new DockerExecutor({
   runtime: env.RUNNER_RUNTIME,
-  images: { python: env.RUNNER_IMAGE_PYTHON, node: env.RUNNER_IMAGE_NODE, sql: env.RUNNER_IMAGE_SQL },
+  images: {
+    python: env.RUNNER_IMAGE_PYTHON,
+    node: env.RUNNER_IMAGE_NODE,
+    sql: env.RUNNER_IMAGE_SQL,
+  },
 });
 const worker = startWorker({
   connection,
@@ -24,7 +28,12 @@ const worker = startWorker({
 // Heartbeat for monitoring (queue depth and runner health alerts, spec L13).
 const beat = async () => {
   await connection
-    .set(`runner:heartbeat:${env.RUNNER_ID}`, JSON.stringify({ at: Date.now(), runtime: env.RUNNER_RUNTIME }), 'EX', 30)
+    .set(
+      `runner:heartbeat:${env.RUNNER_ID}`,
+      JSON.stringify({ at: Date.now(), runtime: env.RUNNER_RUNTIME }),
+      'EX',
+      30,
+    )
     .catch(() => undefined);
 };
 await beat();
