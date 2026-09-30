@@ -11,3 +11,139 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ---------------------------------------------------------------- L2: accounts
+
+enum UserRole {
+  user
+  content_editor
+  moderator
+  support
+  superadmin
+}
+
+model User {
+  id                  String    @id @default(uuid()) @db.Uuid
+  /// Always stored lower-cased.
+  email               String    @unique
+  emailVerifiedAt     DateTime?
+  passwordHash        String?
+  displayName         String?
+  handle              String?   @unique
+  avatarKey           String?
+  country             String?   @db.Char(2)
+  timeZone            String    @default("UTC")
+  role                UserRole  @default(user)
+  birthYear           Int?
+  goal                String?
+  languages           String[]  @default([])
+  onboardedAt         DateTime?
+  emailDigestOptIn    Boolean   @default(false)
+  failedLoginCount    Int       @default(0)
+  lockedUntil         DateTime?
+  deletionRequestedAt DateTime?
+  deletedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  sessions      Session[]
+  oauthAccounts OAuthAccount[]
+  totpSecret    TotpSecret?
+  recoveryCodes RecoveryCode[]
+  emailTokens   EmailToken[]
+  auditLogs     AuditLog[]     @relation("AuditActor")
+
+  @@index([deletionRequestedAt])
+}
+
+model Session {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @db.Uuid
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// sha256 of the cookie token. The raw token is never stored.
+  tokenHash         String    @unique
+  expiresAt         DateTime
+  lastSeenAt        DateTime  @default(now())
+  userAgent         String?
+  ipHash            String?
+  /// False while a password login waits for the TOTP step.
+  twoFactorVerified Boolean   @default(true)
+  revokedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model OAuthAccount {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider       String
+  providerUserId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+model TotpSecret {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @unique @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// AES-256-GCM encrypted base32 secret.
+  encryptedSecret String
+  enabledAt       DateTime?
+  /// Last accepted 30s time step, to reject code replay.
+  lastUsedStep    Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model RecoveryCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+enum EmailTokenKind {
+  verify_email
+  reset_password
+}
+
+model EmailToken {
+  id        String         @id @default(uuid()) @db.Uuid
+  userId    String         @db.Uuid
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      EmailTokenKind
+  tokenHash String         @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([userId, kind])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  actorId   String?  @db.Uuid
+  actor     User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  target    String?
+  ipHash    String?
+  meta      Json?
+  at        DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([actorId, at])
+  @@index([action, at])
+}

@@ -1,12 +1,16 @@
+import { Button } from '@forge/ui';
 import Link from 'next/link';
+import { getMe } from '@/lib/session';
 import type { Theme } from '@/lib/theme';
+import { SignOutButton } from './sign-out-button';
 import { ThemeToggle } from './theme-toggle';
 
-export function SiteHeader({ theme }: { theme: Theme }) {
+export async function SiteHeader({ theme }: { theme: Theme }) {
+  const me = await getMe();
   return (
     <header className="border-b">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
-        <Link href="/" className="font-semibold tracking-tight">
+        <Link href={me ? '/dashboard' : '/'} className="font-semibold tracking-tight">
           Forge
         </Link>
         <nav aria-label="Main" className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -16,6 +20,23 @@ export function SiteHeader({ theme }: { theme: Theme }) {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle initial={theme} />
+          {me ? (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/settings">{me.handle ?? 'Settings'}</Link>
+              </Button>
+              <SignOutButton />
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/login">Sign in</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href="/signup">Sign up</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>

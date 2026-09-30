@@ -1,10 +1,12 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import { type Health, healthSchema } from '@forge/shared';
+import { Public } from '../common/request-context.js';
 import { ResponseSchema } from '../common/response-schema.js';
 import { ENV, type Env } from '../config/env.js';
 import { PrismaService } from '../infra/prisma.service.js';
 import { RedisService } from '../infra/redis.service.js';
 
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(

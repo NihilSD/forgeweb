@@ -37,6 +37,9 @@ jobs:
       redis:
         image: redis:7-alpine
         ports: ['6379:6379']
+      mailpit:
+        image: axllent/mailpit:latest
+        ports: ['1025:1025', '8025:8025']
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
