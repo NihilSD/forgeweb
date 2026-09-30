@@ -1,0 +1,16 @@
+id: lesson-py-running-max
+title: Running Maximum
+track: algorithms
+format: write-code
+difficulty: easy
+tags: [arrays]
+languages: [python]
+mode: practice
+limits: { timeMs: 2000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+listed: false
+comparator: exact
+entry:
+  python: running_max

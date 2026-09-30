@@ -1,0 +1,25 @@
+---
+title: 'Making decisions'
+order: 2
+concepts: [strings]
+status: needs-review
+---
+
+`if`, `elif` and `else` choose between branches. Python checks the conditions **top to bottom** and runs the first branch whose condition is true:
+
+```python
+if temperature >= 30:
+    advice = "hot"
+elif temperature >= 15:
+    advice = "mild"
+else:
+    advice = "cold"
+```
+
+Comparison operators: `==`, `!=`, `<`, `<=`, `>`, `>=`. Watch the boundaries: "30 or more" is `>= 30`, not `> 30`.
+
+## Try it
+
+```exercise
+lesson-py-grade-label
+```

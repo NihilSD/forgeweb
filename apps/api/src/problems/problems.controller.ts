@@ -36,7 +36,11 @@ export class ProblemsController {
       orderBy: { order: 'asc' },
       include: {
         _count: {
-          select: { problems: { where: { status: 'published', mode: { not: 'competitive' } } } },
+          select: {
+            problems: {
+              where: { status: 'published', listed: true, mode: { not: 'competitive' } },
+            },
+          },
         },
       },
     });
@@ -77,6 +81,7 @@ export class ProblemsController {
 
     const where: Prisma.ProblemWhereInput = {
       status: 'published',
+      listed: true,
       mode: { not: 'competitive' },
       ...(q.track ? { track: { slug: q.track } } : {}),
       ...(q.difficulty ? { difficulty: q.difficulty } : {}),

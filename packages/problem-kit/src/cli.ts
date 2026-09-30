@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { findPackages } from './build.js';
+import { findCourses, validateCourse } from './courses.js';
 import { DevExecutor } from './exec/dev-executor.js';
 import { validatePackage } from './validate.js';
 
@@ -68,6 +69,21 @@ async function main() {
       for (const w of report.warnings) console.info(`    warning: ${w}`);
     }
   }
+  // Courses live next to problems (content/courses) and may reference any package by id.
+  const coursesRoot = resolve(root, '../courses');
+  const ids = new Set((await findPackages(root)).map((d) => d.split(/[\\/]/).pop()!));
+  let courseFailures = 0;
+  if (!values.only) {
+    for (const dir of await findCourses(coursesRoot)) {
+      const errors = await validateCourse(dir, ids);
+      if (errors.length) courseFailures++;
+      if (!values.json) {
+        console.info(`${errors.length ? '✘' : '✔'} course ${dir.split(/[\\/]/).pop()}`);
+        for (const e of errors) console.info(`    error: ${e}`);
+      }
+    }
+  }
+  failed += courseFailures;
   if (values.json) console.info(JSON.stringify(reports, null, 2));
   else
     console.info(

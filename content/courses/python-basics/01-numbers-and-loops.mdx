@@ -1,0 +1,38 @@
+---
+title: 'Numbers, variables and loops'
+order: 1
+concepts: [arrays, math]
+status: needs-review
+---
+
+Python programs are made of **statements** that run top to bottom. A **variable** is a name for a value:
+
+```python
+total = 0
+price = 12.5
+total = total + price   # total is now 12.5
+```
+
+A `for` loop repeats a block once for each item in a list. Indentation (four spaces) marks the block:
+
+```python
+for n in [3, -1, 4]:
+    print(n)
+```
+
+An `if` inside the loop decides whether to do something for that item:
+
+```python
+total = 0
+for n in [3, -1, 4]:
+    if n > 0:
+        total += n
+```
+
+## Try it
+
+Write a function that adds up only the positive numbers. `def` defines a function and `return` hands back its result.
+
+```exercise
+lesson-py-sum-positives
+```

@@ -1,0 +1,24 @@
+---
+title: 'Hashing: remember what you have seen'
+order: 1
+concepts: [hashing]
+status: needs-review
+---
+
+Many problems ask "have I seen a matching value before?". Checking every earlier element is O(n²). A **hash map** (Python `dict`, JavaScript `Map`) answers in O(1) on average, so one pass is enough:
+
+```python
+seen = {}
+for j, x in enumerate(values):
+    if target - x in seen:
+        return [seen[target - x], j]
+    seen[x] = j
+```
+
+**Recognise it:** pairs, duplicates, counting, "complement" lookups.
+
+## Drill
+
+```exercise
+two-sum-orders
+```

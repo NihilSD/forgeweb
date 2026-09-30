@@ -1,0 +1,23 @@
+---
+title: 'Building lists'
+order: 4
+concepts: [arrays]
+status: needs-review
+---
+
+Lists grow with `.append()`. `out[-1]` is the last element, and `max(a, b)` returns the larger value.
+
+```python
+out = []
+for x in [2, 5, 1]:
+    out.append(x * 10)
+# out == [20, 50, 10]
+```
+
+A common pattern is to carry a value from one step to the next, such as "the largest value so far".
+
+## Try it
+
+```exercise
+lesson-py-running-max
+```

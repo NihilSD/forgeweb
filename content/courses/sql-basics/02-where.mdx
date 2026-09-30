@@ -1,0 +1,20 @@
+---
+title: 'Filtering rows'
+order: 2
+concepts: [select]
+status: needs-review
+---
+
+`WHERE` keeps only rows for which a condition is true. Combine conditions with `AND` and `OR`:
+
+```sql
+SELECT name FROM products WHERE category = 'books' AND stock > 0;
+```
+
+Text values go in single quotes. `<` excludes the boundary, `<=` includes it.
+
+## Try it
+
+```exercise
+lesson-sql-where-filter
+```

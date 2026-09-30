@@ -1,0 +1,24 @@
+---
+title: 'Choosing columns'
+order: 1
+concepts: [select]
+status: needs-review
+---
+
+A table is a set of rows with named columns. `SELECT` chooses columns, `FROM` names the table:
+
+```sql
+SELECT name, price FROM products;
+```
+
+Without `ORDER BY`, rows come back in **no guaranteed order**. Add it whenever order matters:
+
+```sql
+SELECT name, price FROM products ORDER BY name;
+```
+
+## Try it
+
+```exercise
+lesson-sql-select-columns
+```

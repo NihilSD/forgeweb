@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { generateInstance, loadModule } from '@forge/problem-kit';
+import { findPackages, generateInstance, loadModule } from '@forge/problem-kit';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { totpAt } from '../src/auth/totp.js';
 import { ContentService } from '../src/problems/content.service.js';
@@ -33,8 +33,9 @@ describe('import', () => {
     const again = await importProblems(ctx.prisma, ROOT, { publishDrafts: true });
     expect(again.created).toEqual([]);
     expect(again.updated).toEqual([]);
-    expect(again.unchanged.length).toBe(6);
-    expect(await ctx.prisma.problemVersion.count()).toBe(6);
+    const total = (await findPackages(ROOT)).length;
+    expect(again.unchanged.length).toBe(total);
+    expect(await ctx.prisma.problemVersion.count()).toBe(total);
     expect(await ctx.prisma.track.count()).toBe(4);
   });
 
@@ -54,9 +55,11 @@ describe('import', () => {
 describe('library', () => {
   it('lists published problems with filters and search', async () => {
     const c = ctx.client();
-    const all = await c.get('/problems');
+    const all = await c.get('/problems?limit=100');
     expect(all.status).toBe(200);
-    expect(all.body.items).toHaveLength(6);
+    expect(all.body.items).toHaveLength(
+      await ctx.prisma.problem.count({ where: { listed: true } }),
+    );
     const sql = await c.get('/problems?track=sql');
     expect(sql.body.items.map((p: { slug: string }) => p.slug)).toEqual(['city-top-customers']);
     const easy = await c.get('/problems?difficulty=easy');
@@ -70,16 +73,24 @@ describe('library', () => {
     const tracks = await c.get('/tracks');
     expect(
       tracks.body.items.find((t: { slug: string }) => t.slug === 'algorithms').problemCount,
-    ).toBe(2);
+    ).toBe(
+      await ctx.prisma.problem.count({ where: { listed: true, track: { slug: 'algorithms' } } }),
+    );
   });
 
   it('paginates with a cursor', async () => {
     const c = ctx.client();
-    const first = await c.get('/problems?limit=4');
-    expect(first.body.items).toHaveLength(4);
-    const second = await c.get(`/problems?limit=4&cursor=${first.body.nextCursor}`);
-    expect(second.body.items).toHaveLength(2);
-    expect(second.body.nextCursor).toBeNull();
+    const listed = await ctx.prisma.problem.count({ where: { listed: true } });
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    do {
+      const page = await c.get(`/problems?limit=4${cursor ? `&cursor=${cursor}` : ''}`);
+      expect(page.body.items.length).toBeLessThanOrEqual(4);
+      seen.push(...page.body.items.map((p: { slug: string }) => p.slug));
+      cursor = page.body.nextCursor;
+    } while (cursor);
+    expect(seen).toHaveLength(listed);
+    expect(new Set(seen).size).toBe(listed);
   });
 
   it('rejects invalid filters', async () => {

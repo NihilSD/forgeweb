@@ -1,0 +1,29 @@
+---
+title: 'Binary search'
+order: 6
+concepts: [binary-search]
+status: needs-review
+---
+
+On sorted data, compare with the middle element and throw away the half that can't contain the answer: O(log n) instead of O(n).
+
+The safest template keeps a half-open range `[lo, hi)` where the answer must be:
+
+```python
+lo, hi = 0, len(xs)
+while lo < hi:
+    mid = (lo + hi) // 2
+    if xs[mid] < target:
+        lo = mid + 1
+    else:
+        hi = mid
+# lo is the first index with xs[lo] >= target
+```
+
+**Recognise it:** sorted input, "first/last position where…", many queries on the same data, searching over the answer itself.
+
+## Drill
+
+```exercise
+batch-lower-bound
+```

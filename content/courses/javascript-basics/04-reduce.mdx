@@ -1,0 +1,22 @@
+---
+title: 'Combining values with reduce'
+order: 4
+concepts: [arrays, math]
+status: needs-review
+---
+
+`reduce` folds an array into a single value:
+
+```js
+const total = [3, 4, 5].reduce((sum, x) => sum + x, 0); // 12
+```
+
+The second argument (`0`) is the starting value. Objects in arrays are read with dot notation: `person.age`.
+
+Always think about the **empty array**: dividing by `people.length` when it is 0 gives `NaN`.
+
+## Try it
+
+```exercise
+lesson-js-average-age
+```

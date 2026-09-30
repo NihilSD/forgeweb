@@ -1,0 +1,7 @@
+slug: sql-basics
+title: 'SQL basics'
+description: 'Query a database: choose columns, filter rows, group and sort.'
+topic: sql
+order: 3
+kind: course
+review: needs-review

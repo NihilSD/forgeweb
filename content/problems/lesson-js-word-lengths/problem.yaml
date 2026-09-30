@@ -1,0 +1,17 @@
+id: lesson-js-word-lengths
+title: Word Lengths
+track: algorithms
+format: write-code
+difficulty: easy
+tags: [strings, hashing]
+languages: [javascript, typescript]
+mode: practice
+limits: { timeMs: 2000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+listed: false
+comparator: exact
+entry:
+  javascript: wordLengths
+  typescript: wordLengths

@@ -19,7 +19,15 @@ import type { EditorSettings, Keybindings } from '@/components/editor/code-edito
 import { DifficultyBadge } from '@/components/difficulty-badge';
 import { Markdown } from '@/components/markdown';
 import { api, ApiClientError } from '@/lib/api-client';
+import { pollSubmission } from '@/lib/submissions';
 import { ResultsPanel } from './results-panel';
+import {
+  BookmarkToggle,
+  EditorialPanel,
+  HintsPanel,
+  NotesPanel,
+  useProgress,
+} from './practice-panels';
 import { FlagPanel, HistoryPanel, parseSchema, SchemaBrowser } from './side-panels';
 
 const CodeEditor = dynamic(
@@ -59,17 +67,6 @@ function readLocal<T>(key: string, fallback: T): T {
 const selectClass =
   'h-8 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring';
 
-async function poll(id: string, signal: AbortSignal): Promise<Submission> {
-  const started = Date.now();
-  for (;;) {
-    const s = await api<Submission>(`/submissions/${id}`, { signal });
-    if (s.status === 'done') return s;
-    if (Date.now() - started > 90_000)
-      throw new ApiClientError(0, 'TIMEOUT', 'This is taking too long. Please try again.');
-    await new Promise((r) => setTimeout(r, Date.now() - started < 3000 ? 300 : 1000));
-  }
-}
-
 export function Workspace({
   problem,
   drafts,
@@ -100,6 +97,7 @@ export function Workspace({
   const [historyKey, setHistoryKey] = useState(0);
   const [solved, setSolved] = useState(problem.solved);
   const wide = useWide();
+  const { progress, reload: reloadProgress } = useProgress(problem.slug);
   const abort = useRef<AbortController | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -175,9 +173,12 @@ export function Workspace({
           method: 'POST',
           body: { language, code: current, ...(customArgs ? { customArgs } : {}) },
         });
-        const done = await poll(started.id, abort.current.signal);
+        const done = await pollSubmission(started.id, abort.current.signal);
         setResult(done);
-        if (kind === 'submit' && done.verdict === 'accepted') setSolved(true);
+        if (kind === 'submit' && done.verdict === 'accepted') {
+          setSolved(true);
+          void reloadProgress();
+        }
         setHistoryKey((k) => k + 1);
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
@@ -189,7 +190,7 @@ export function Workspace({
         setPending(null);
       }
     },
-    [pending, bottomTab, customInput, language, current, problem.slug, saveDraft],
+    [pending, bottomTab, customInput, language, current, problem.slug, saveDraft, reloadProgress],
   );
 
   // Global shortcuts (the editor registers the same keys while focused).
@@ -209,6 +210,9 @@ export function Workspace({
     <Tabs defaultValue="statement" className="flex h-full flex-col">
       <TabsList className="mx-3 mt-3 w-fit">
         <TabsTrigger value="statement">Statement</TabsTrigger>
+        <TabsTrigger value="hints">Hints</TabsTrigger>
+        <TabsTrigger value="editorial">Editorial</TabsTrigger>
+        <TabsTrigger value="notes">Notes</TabsTrigger>
         {!isFlag ? <TabsTrigger value="history">Submissions</TabsTrigger> : null}
       </TabsList>
       <TabsContent value="statement" className="min-h-0 flex-1 overflow-y-auto px-5 pb-8">
@@ -216,6 +220,13 @@ export function Workspace({
           <span className="capitalize">{problem.track}</span>
           <DifficultyBadge difficulty={problem.difficulty} />
           {solved ? <span className="text-success">Solved</span> : null}
+          <span className="ml-auto">
+            <BookmarkToggle
+              slug={problem.slug}
+              progress={progress}
+              onChange={() => void reloadProgress()}
+            />
+          </span>
         </div>
         <h1 className="mt-2 text-xl font-semibold">{problem.title}</h1>
         <div className="mt-4">
@@ -226,6 +237,19 @@ export function Workspace({
             <SchemaBrowser tables={schema} />
           </div>
         ) : null}
+      </TabsContent>
+      <TabsContent value="hints" className="min-h-0 flex-1 overflow-y-auto">
+        <HintsPanel slug={problem.slug} onRevealed={() => void reloadProgress()} />
+      </TabsContent>
+      <TabsContent value="editorial" className="min-h-0 flex-1 overflow-y-auto">
+        <EditorialPanel
+          slug={problem.slug}
+          progress={progress}
+          onGaveUp={() => void reloadProgress()}
+        />
+      </TabsContent>
+      <TabsContent value="notes" className="min-h-0 flex-1 overflow-y-auto">
+        <NotesPanel slug={problem.slug} initial={progress?.note ?? ''} />
       </TabsContent>
       {!isFlag ? (
         <TabsContent value="history" className="min-h-0 flex-1 overflow-y-auto">

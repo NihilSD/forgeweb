@@ -1,0 +1,24 @@
+---
+title: 'Counting with GROUP BY'
+order: 3
+concepts: [aggregation]
+status: needs-review
+---
+
+Aggregate functions summarise many rows: `COUNT(*)`, `SUM(col)`, `AVG(col)`, `MIN`, `MAX`.
+
+`GROUP BY` makes one group per distinct value and applies the aggregate to each:
+
+```sql
+SELECT category, COUNT(*) AS n
+FROM products
+GROUP BY category;
+```
+
+`AS n` names the output column.
+
+## Try it
+
+```exercise
+lesson-sql-count-group
+```

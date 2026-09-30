@@ -1,0 +1,18 @@
+id: maze-shortest-path
+title: Shortest Way Out
+track: algorithms
+format: write-code
+difficulty: medium
+tags: [bfs-dfs, graphs]
+languages: [python, typescript, javascript]
+mode: practice
+limits: { timeMs: 2000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+listed: true
+comparator: exact
+entry:
+  python: shortest_path
+  typescript: shortestPath
+  javascript: shortestPath

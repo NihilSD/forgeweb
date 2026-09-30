@@ -1,0 +1,16 @@
+id: lesson-py-grade-label
+title: Grade Labels
+track: algorithms
+format: write-code
+difficulty: easy
+tags: [strings]
+languages: [python]
+mode: practice
+limits: { timeMs: 2000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+listed: false
+comparator: exact
+entry:
+  python: grade_label

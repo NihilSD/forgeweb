@@ -25,6 +25,10 @@ import { RateLimitGuard } from './rate-limit/rate-limit.guard.js';
 import { RateLimitService } from './rate-limit/rate-limit.service.js';
 import { AccountDeletionService } from './users/account-deletion.service.js';
 import { DataExportService } from './users/data-export.service.js';
+import { EntitlementsService } from './entitlements/entitlements.service.js';
+import { PracticeController } from './practice/practice.controller.js';
+import { PracticeService } from './practice/practice.service.js';
+import { CoursesController } from './courses/courses.controller.js';
 import { MeService } from './users/me.service.js';
 import { AdminProblemsController } from './problems/admin-problems.controller.js';
 import { ContentService } from './problems/content.service.js';
@@ -52,6 +56,7 @@ import { UsersController } from './users/users.controller.js';
     PasswordService,
     MeService,
     DataExportService,
+    EntitlementsService,
   ],
   exports: [
     AuditService,
@@ -61,9 +66,20 @@ import { UsersController } from './users/users.controller.js';
     PasswordService,
     MeService,
     DataExportService,
+    EntitlementsService,
   ],
 })
-export class CoreModule {}
+export class CoreModule implements OnModuleInit {
+  constructor(
+    @Inject(MeService) private readonly me: MeService,
+    @Inject(EntitlementsService) private readonly entitlements: EntitlementsService,
+  ) {}
+
+  onModuleInit() {
+    // The plan shown in /me always comes from the entitlements service.
+    this.me.planResolver = (userId) => this.entitlements.plan(userId);
+  }
+}
 
 @Module({
   controllers: [AuthController, UsersController],
@@ -148,6 +164,56 @@ export class SubmissionsModule implements OnModuleInit {
 }
 
 @Module({
+  imports: [ProblemsModule, SubmissionsModule],
+  controllers: [PracticeController, CoursesController],
+  providers: [PracticeService],
+  exports: [PracticeService],
+})
+export class PracticeModule implements OnModuleInit {
+  constructor(
+    @Inject(PracticeService) private readonly practice: PracticeService,
+    @Inject(SubmissionsService) private readonly submissions: SubmissionsService,
+    @Inject(DataExportService) private readonly exporter: DataExportService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
+
+  onModuleInit() {
+    this.submissions.hooks.push({ onFinished: (sub) => this.practice.onSubmissionFinished(sub) });
+    const db = this.prisma.client;
+    this.exporter.register('lessons', (userId) =>
+      db.lessonProgress.findMany({
+        where: { userId },
+        select: {
+          lesson: { select: { slug: true, course: { select: { slug: true } } } },
+          completedAt: true,
+        },
+      }),
+    );
+    this.exporter.register('mastery', (userId) =>
+      db.mastery.findMany({ where: { userId }, select: { tag: true, level: true, points: true } }),
+    );
+    this.exporter.register('notes', (userId) =>
+      db.note.findMany({
+        where: { userId },
+        select: { problem: { select: { slug: true } }, text: true, updatedAt: true },
+      }),
+    );
+    this.exporter.register('bookmarks', (userId) =>
+      db.bookmark.findMany({
+        where: { userId },
+        select: { problem: { select: { slug: true } }, createdAt: true },
+      }),
+    );
+    this.exporter.register('hints', (userId) =>
+      db.hintUse.findMany({
+        where: { userId },
+        select: { problem: { select: { slug: true } }, level: true, createdAt: true },
+      }),
+    );
+  }
+}
+
+@Module({
   imports: [
     InfraModule,
     CoreModule,
@@ -155,6 +221,7 @@ export class SubmissionsModule implements OnModuleInit {
     AdminModule,
     ProblemsModule,
     SubmissionsModule,
+    PracticeModule,
   ],
   controllers: [HealthController],
   providers: [

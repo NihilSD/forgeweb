@@ -1,0 +1,22 @@
+---
+title: 'Arrays: filter and map'
+order: 1
+concepts: [arrays]
+status: needs-review
+---
+
+Arrays have methods that take a **function** and return a new array:
+
+```js
+const prices = [4, 9, 12];
+const cheap = prices.filter((p) => p < 10); // [4, 9]
+const withTax = prices.map((p) => p * 1.2); // [4.8, 10.8, 14.4]
+```
+
+`(p) => p < 10` is an **arrow function**. `filter` keeps elements for which it returns `true`; `map` transforms every element. Neither changes the original array.
+
+## Try it
+
+```exercise
+lesson-js-double-evens
+```

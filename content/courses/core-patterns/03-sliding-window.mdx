@@ -1,0 +1,20 @@
+---
+title: 'Sliding window'
+order: 3
+concepts: [sliding-window]
+status: needs-review
+---
+
+For "the best contiguous stretch" questions, keep a **window** `[left, right]`. Extend `right` one step at a time; when the window breaks the rule, move `left` forward until it is valid again. Each element enters and leaves once: O(n).
+
+```visualizer
+sliding-window
+```
+
+**Recognise it:** subarrays or substrings, "longest/shortest with at most…", running sums of non-negative values.
+
+## Drill
+
+```exercise
+budget-window
+```

@@ -2,6 +2,7 @@ import { Alert, Button, Card, CardDescription, CardHeader, CardTitle } from '@fo
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireMe } from '@/lib/session';
+import { Recommendations } from './recommendations';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
@@ -21,13 +22,27 @@ export default async function DashboardPage() {
         </Alert>
       ) : null}
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <Recommendations />
         <Card>
           <CardHeader>
-            <CardTitle>Practice</CardTitle>
-            <CardDescription>Pick a problem and start solving.</CardDescription>
+            <CardTitle>Keep learning</CardTitle>
+            <CardDescription>
+              Courses, pattern lessons, your skill map and review queue.
+            </CardDescription>
             <Button asChild className="mt-3 w-fit">
-              <Link href="/problems">Browse problems</Link>
+              <Link href="/learn">Go to Learn</Link>
             </Button>
+            <div className="mt-2 flex gap-3 text-sm">
+              <Link href="/skills" className="underline">
+                Skill map
+              </Link>
+              <Link href="/review" className="underline">
+                Review queue
+              </Link>
+              <Link href="/problems" className="underline">
+                All problems
+              </Link>
+            </div>
           </CardHeader>
         </Card>
       </div>

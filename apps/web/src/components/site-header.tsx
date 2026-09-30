@@ -14,9 +14,17 @@ export async function SiteHeader({ theme }: { theme: Theme }) {
           Forge
         </Link>
         <nav aria-label="Main" className="flex items-center gap-4 text-sm text-muted-foreground">
+          <Link href="/learn" className="hover:text-foreground">
+            Learn
+          </Link>
           <Link href="/problems" className="hover:text-foreground">
             Problems
           </Link>
+          {me ? (
+            <Link href="/skills" className="hover:text-foreground">
+              Skills
+            </Link>
+          ) : null}
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle initial={theme} />

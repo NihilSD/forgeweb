@@ -1,0 +1,20 @@
+---
+title: 'Sorting and limiting'
+order: 4
+concepts: [select, sorting]
+status: needs-review
+---
+
+`ORDER BY col DESC` sorts from largest to smallest. Add a second column to break ties. `LIMIT n` keeps the first `n` rows:
+
+```sql
+SELECT name, price FROM products
+ORDER BY price DESC, name
+LIMIT 3;
+```
+
+## Try it
+
+```exercise
+lesson-sql-top-priced
+```

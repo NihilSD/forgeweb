@@ -34,6 +34,8 @@ export const manifestSchema = z
     /** Function to call per language (write-code / fix-code). Not used by sql or flag. */
     entry: z.record(z.string(), z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/)).optional(),
     comparator: z.enum(COMPARATORS).default('exact'),
+    /** False for lesson exercises: reachable from lessons only, hidden from the library. */
+    listed: z.boolean().default(true),
     /** Minutes allowed in verified mode (spec 7.1 default 45). */
     verifiedMinutes: z.number().int().min(5).max(180).default(45),
   })

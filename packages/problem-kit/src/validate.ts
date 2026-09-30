@@ -26,6 +26,7 @@ export interface ValidateOptions {
 
 const VALIDATOR_FLAG_SECRET = 'forge-validator-flag-secret';
 const VALIDATE_CONCURRENCY = Number(process.env.VALIDATE_CONCURRENCY ?? 6);
+const SEEDS_PER_PROCESS = 5;
 
 /** Spec 5 validator rules. Never throws for a bad package: problems go in `errors`. */
 export async function validatePackage(
@@ -155,8 +156,13 @@ async function runAcrossSeeds(
     groups.set(code, [...(groups.get(code) ?? []), i]);
   }
   const outcomes: Outcome[] = [];
-  // Groups are independent: run them concurrently (executors are safe to call in parallel).
-  const entries = [...groups];
+  // Chunk large groups: one process per <= SEEDS_PER_PROCESS seeds keeps requests small and lets
+  // slow (e.g. timing-out) wrong solutions run in parallel. Groups are independent.
+  const entries: [string, GeneratedInstance[]][] = [];
+  for (const [code, group] of groups) {
+    for (let k = 0; k < group.length; k += SEEDS_PER_PROCESS)
+      entries.push([code, group.slice(k, k + SEEDS_PER_PROCESS)]);
+  }
   let next = 0;
   const worker = async () => {
     while (next < entries.length) {

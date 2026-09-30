@@ -1,0 +1,17 @@
+id: lesson-js-fizzbuzz
+title: FizzBuzz List
+track: algorithms
+format: write-code
+difficulty: easy
+tags: [math]
+languages: [javascript, typescript]
+mode: practice
+limits: { timeMs: 2000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+listed: false
+comparator: exact
+entry:
+  javascript: fizzBuzz
+  typescript: fizzBuzz

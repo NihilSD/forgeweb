@@ -1,0 +1,18 @@
+id: grid-paths
+title: Paths Through the Park
+track: algorithms
+format: write-code
+difficulty: medium
+tags: [recursion, dynamic-programming]
+languages: [python, typescript, javascript]
+mode: practice
+limits: { timeMs: 2000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+listed: true
+comparator: exact
+entry:
+  python: count_paths
+  typescript: countPaths
+  javascript: countPaths

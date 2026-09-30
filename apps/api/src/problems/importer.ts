@@ -116,6 +116,7 @@ export async function importProblems(
       formats: [m.format],
       languages: m.languages,
       mode: m.mode,
+      listed: m.listed,
       reviewStatus: m.review === 'approved' ? ('approved' as const) : ('needs_review' as const),
       version: m.version,
       searchText: [m.title, m.id.replace(/-/g, ' '), ...m.tags].join(' '),

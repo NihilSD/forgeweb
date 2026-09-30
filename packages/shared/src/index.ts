@@ -6,3 +6,4 @@ export * from './schemas/auth.js';
 export * from './verdicts.js';
 export * from './schemas/problems.js';
 export * from './schemas/submissions.js';
+export * from './schemas/practice.js';

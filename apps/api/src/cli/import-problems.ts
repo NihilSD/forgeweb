@@ -11,6 +11,7 @@ import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { createPrismaClient } from '@forge/db';
 import { findPackages, type ValidationReport, validatePackage } from '@forge/problem-kit';
+import { importCourses } from '../courses/course-importer.js';
 import { importProblems } from '../problems/importer.js';
 
 const { values } = parseArgs({
@@ -46,6 +47,10 @@ try {
     `created ${summary.created.length}, updated ${summary.updated.length}, unchanged ${summary.unchanged.length}, failed ${summary.failed.length}`,
   );
   for (const f of summary.failed) console.error(`  ✘ ${f.id}: ${f.error}`);
+  const courses = await importCourses(prisma, resolve(values.root, '../courses'), {
+    publishDrafts: values['publish-drafts'],
+  });
+  console.info(`courses: ${courses.join(', ') || 'none'}`);
   process.exitCode = summary.failed.length ? 1 : 0;
 } finally {
   await prisma.$disconnect();

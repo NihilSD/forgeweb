@@ -1,0 +1,22 @@
+---
+title: 'Recursion and memoization'
+order: 4
+concepts: [recursion, dynamic-programming]
+status: needs-review
+---
+
+A recursive function solves a problem by solving smaller copies of it. For grid routes: routes into a cell = routes into the cell above + routes into the cell on the left.
+
+Plain recursion recomputes the same cells many times. **Memoization** stores each answer once; filling a table in order does the same thing bottom-up (dynamic programming).
+
+```visualizer
+grid-fill
+```
+
+**Recognise it:** "number of ways", choices at each step, overlapping sub-problems.
+
+## Drill
+
+```exercise
+grid-paths
+```

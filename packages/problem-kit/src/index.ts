@@ -13,3 +13,4 @@ export * from './exec/prepare.js';
 export * from './exec/watchdog.js';
 export * from './exec/csv.js';
 export * from './runner-protocol.js';
+export * from './courses.js';

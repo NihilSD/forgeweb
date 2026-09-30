@@ -46,15 +46,22 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  sessions        Session[]
-  submissions     Submission[]
-  drafts          Draft[]
-  flagSubmissions FlagSubmission[] @relation("FlagSubmitter")
-  oauthAccounts   OAuthAccount[]
-  totpSecret      TotpSecret?
-  recoveryCodes   RecoveryCode[]
-  emailTokens     EmailToken[]
-  auditLogs       AuditLog[]       @relation("AuditActor")
+  sessions          Session[]
+  submissions       Submission[]
+  drafts            Draft[]
+  flagSubmissions   FlagSubmission[]  @relation("FlagSubmitter")
+  oauthAccounts     OAuthAccount[]
+  totpSecret        TotpSecret?
+  recoveryCodes     RecoveryCode[]
+  emailTokens       EmailToken[]
+  auditLogs         AuditLog[]        @relation("AuditActor")
+  hintUses          HintUse[]
+  problemProgresses ProblemProgress[]
+  bookmarks         Bookmark[]
+  notes             Note[]
+  masteries         Mastery[]
+  reviewItems       ReviewItem[]
+  lessonProgresses  LessonProgress[]
 
   @@index([deletionRequestedAt])
 }
@@ -188,34 +195,41 @@ enum Difficulty {
 }
 
 model Problem {
-  id              String                   @id @default(uuid()) @db.Uuid
-  slug            String                   @unique
-  trackId         String                   @db.Uuid
-  track           Track                    @relation(fields: [trackId], references: [id])
-  title           String
-  difficulty      Difficulty
+  id                String                   @id @default(uuid()) @db.Uuid
+  slug              String                   @unique
+  trackId           String                   @db.Uuid
+  track             Track                    @relation(fields: [trackId], references: [id])
+  title             String
+  difficulty        Difficulty
   /// Starts from difficulty (spec 8); recalculated weekly from verified solve rates (v1).
-  rating          Int
-  tags            String[]
-  formats         String[]
-  languages       String[]
-  mode            ProblemMode
-  status          ProblemStatus            @default(draft)
-  reviewStatus    ReviewStatus             @default(needs_review)
+  rating            Int
+  tags              String[]
+  formats           String[]
+  languages         String[]
+  mode              ProblemMode
+  status            ProblemStatus            @default(draft)
+  reviewStatus      ReviewStatus             @default(needs_review)
   /// Current version number (ProblemVersion.version).
-  version         Int
-  publishedAt     DateTime?
+  version           Int
+  publishedAt       DateTime?
+  /// False for lesson exercises: reachable from lessons, hidden from the library.
+  listed            Boolean                  @default(true)
   /// Title, tags and slug, maintained by the importer; source of `search`.
-  searchText      String                   @default("")
+  searchText        String                   @default("")
   /// Generated tsvector (see the l3 migration); read-only.
-  search          Unsupported("tsvector")? @default(dbgenerated("to_tsvector('simple'::regconfig, \"searchText\")"))
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
-  versions        ProblemVersion[]
-  submissions     Submission[]
-  drafts          Draft[]
-  flagIssues      FlagIssue[]
-  flagSubmissions FlagSubmission[]
+  search            Unsupported("tsvector")? @default(dbgenerated("to_tsvector('simple'::regconfig, \"searchText\")"))
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  versions          ProblemVersion[]
+  submissions       Submission[]
+  drafts            Draft[]
+  flagIssues        FlagIssue[]
+  flagSubmissions   FlagSubmission[]
+  hintUses          HintUse[]
+  problemProgresses ProblemProgress[]
+  bookmarks         Bookmark[]
+  notes             Note[]
+  reviewItems       ReviewItem[]
 
   @@index([trackId, status])
   @@index([status, difficulty])
@@ -364,4 +378,146 @@ model FlagSubmission {
 
   @@index([userId, problemId])
   @@index([sharedFrom])
+}
+
+// ---------------------------------------------------------------- L6: practice
+
+/// One revealed hint level. `day` is the user's local date (YYYY-MM-DD) for daily limits.
+model HintUse {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId String   @db.Uuid
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  level     Int
+  day       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, problemId, level])
+  @@index([userId, day])
+}
+
+/// Practice state per user and problem (drives XP, mastery and the review queue).
+model ProblemProgress {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId     String    @db.Uuid
+  problem       Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  failedSubmits Int       @default(0)
+  solvedAt      DateTime?
+  gaveUpAt      DateTime?
+  /// Hint levels used before the first solve (for XP and mastery).
+  hintsAtSolve  Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([userId, problemId])
+}
+
+model Bookmark {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId String   @db.Uuid
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, problemId])
+}
+
+model Note {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId String   @db.Uuid
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, problemId])
+}
+
+/// Spec 8: mastery per concept tag, levels 0-5 (derived from `points`, 20 per level).
+model Mastery {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tag           String
+  points        Int       @default(0)
+  level         Int       @default(0)
+  lastPracticed DateTime?
+  nextReviewAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([userId, tag])
+}
+
+/// Spec 8: struggled problems come back after 2, 7 and 21 days.
+model ReviewItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId   String    @db.Uuid
+  problem     Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  /// 0, 1, 2 = waiting for the 2/7/21-day review; 3 = finished.
+  stage       Int       @default(0)
+  dueAt       DateTime
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, problemId])
+  @@index([userId, dueAt])
+}
+
+model Course {
+  id           String        @id @default(uuid()) @db.Uuid
+  slug         String        @unique
+  title        String
+  description  String
+  /// Language or track this course belongs to.
+  topic        String
+  order        Int
+  kind         String        @default("course")
+  status       ProblemStatus @default(draft)
+  reviewStatus ReviewStatus  @default(needs_review)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  lessons      Lesson[]
+}
+
+model Lesson {
+  id           String           @id @default(uuid()) @db.Uuid
+  courseId     String           @db.Uuid
+  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  slug         String
+  title        String
+  order        Int
+  concepts     String[]
+  /// Markdown body with ```exercise / ```visualizer blocks.
+  body         String
+  reviewStatus ReviewStatus     @default(needs_review)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  progress     LessonProgress[]
+
+  @@unique([courseId, slug])
+}
+
+model LessonProgress {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String   @db.Uuid
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completedAt DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, lessonId])
 }

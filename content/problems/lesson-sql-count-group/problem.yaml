@@ -1,0 +1,14 @@
+id: lesson-sql-count-group
+title: Count per Category
+track: sql
+format: write-code
+difficulty: easy
+tags: [aggregation]
+languages: [sql]
+mode: practice
+limits: { timeMs: 2000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+listed: false
+comparator: rows

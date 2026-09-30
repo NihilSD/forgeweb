@@ -1,0 +1,21 @@
+---
+title: 'Working with text'
+order: 3
+concepts: [strings]
+status: needs-review
+---
+
+A string is a sequence of characters. You can loop over it like a list, and methods such as `.lower()` return a changed copy:
+
+```python
+for ch in "Forge".lower():
+    print(ch)        # f, o, r, g, e
+```
+
+`in` checks membership: `"e" in "aeiou"` is `True`. `sum()` over booleans counts the `True` values, because `True` behaves like `1`.
+
+## Try it
+
+```exercise
+lesson-py-count-vowels
+```

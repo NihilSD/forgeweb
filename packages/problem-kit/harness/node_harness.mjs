@@ -18,7 +18,22 @@ for (const key of Object.keys(process.env)) if (!KEEP_ENV.has(key)) delete proce
 const MARKER = '\x1eFORGE\x1f';
 const [requestPath, solutionPath] = process.argv.slice(2);
 const request = JSON.parse(readFileSync(requestPath, 'utf8'));
-const writeLine = (line) => writeSync(1, MARKER + line + '\n');
+// stdout is a pipe that may be non-blocking: large lines can hit EAGAIN, so write in a loop and
+// wait briefly (synchronously) whenever the pipe is full.
+const pause = new Int32Array(new SharedArrayBuffer(4));
+function writeAll(text) {
+  const buf = Buffer.from(text);
+  let off = 0;
+  while (off < buf.length) {
+    try {
+      off += writeSync(1, buf, off, buf.length - off);
+    } catch (err) {
+      if (err && err.code === 'EAGAIN') Atomics.wait(pause, 0, 0, 2);
+      else throw err;
+    }
+  }
+}
+const writeLine = (line) => writeAll(MARKER + line + '\n');
 const emit = (obj) => writeLine(JSON.stringify(obj));
 
 function jsonable(value, depth = 0) {

@@ -1,0 +1,17 @@
+id: lesson-js-average-age
+title: Average Age
+track: algorithms
+format: write-code
+difficulty: easy
+tags: [arrays, math]
+languages: [javascript, typescript]
+mode: practice
+limits: { timeMs: 2000, memoryMb: 128, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+listed: false
+comparator: float
+entry:
+  javascript: averageAge
+  typescript: averageAge

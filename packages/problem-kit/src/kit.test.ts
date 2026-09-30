@@ -105,6 +105,18 @@ describe('dev executor verdicts', () => {
     expect((await run(language, code)).verdict).toBe(verdict);
   });
 
+  it('handles return values larger than a pipe buffer (EAGAIN regression)', async () => {
+    const res = await ex.run({
+      language: 'javascript',
+      code: 'function big(n) { return Array.from({ length: n }, (_, i) => i) }',
+      entry: 'big',
+      tests: [{ id: 'a', args: [200_000] }],
+      limits: { timeMs: 2000, memoryMb: 256, outputKb: 4096 },
+    });
+    expect(res.tests[0]?.status).toBe('ok');
+    expect((res.tests[0]?.value as number[]).length).toBe(200_000);
+  });
+
   it('hides hidden test details', async () => {
     const g = await run('python', 'def sq(x):\n    return 4');
     const hidden = g.tests.find((t) => !t.visible)!;
