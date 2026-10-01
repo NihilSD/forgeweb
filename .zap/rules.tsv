@@ -1,0 +1,1 @@
+10055	WARN	(CSP: style-src unsafe-inline) Required by Next.js and Monaco inline styles; scripts use nonces. See SECURITY_REVIEW.md 3.2.

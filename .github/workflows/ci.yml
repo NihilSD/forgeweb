@@ -17,13 +17,9 @@ env:
   REQUIRE_DOCKER: '1'
   RUNNER_RUNTIME: runc
   RUNNER_REDIS_URL: redis://localhost:6379/4
-  RUNNER_JOB_SIGNING_KEYS: k1:ci-job-signing-secret-000000000000000000
-  RUNNER_CALLBACK_KEYS: c1:ci-callback-secret-00000000000000000000000
   DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_test
   E2E_DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_e2e
   REDIS_URL: redis://localhost:6379/1
-  APP_SECRET: ci-only-secret-ci-only-secret-ci-only-0000
-  ENCRYPTION_KEY: Y2ktb25seS1lbmNyeXB0aW9uLWtleS0zMi1ieXRlcyE=
 
 jobs:
   checks:
@@ -47,6 +43,15 @@ jobs:
         ports: ['1025:1025', '8025:8025']
     steps:
       - uses: actions/checkout@v5
+      - name: Generate throwaway secrets for this run
+        # Never commit secret-shaped values, even test ones: fresh random keys per run.
+        run: |
+          {
+            echo "APP_SECRET=$(openssl rand -hex 32)"
+            echo "ENCRYPTION_KEY=$(openssl rand -base64 32)"
+            echo "RUNNER_JOB_SIGNING_KEYS=k1:$(openssl rand -hex 32)"
+            echo "RUNNER_CALLBACK_KEYS=c1:$(openssl rand -hex 32)"
+          } >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
@@ -68,8 +73,10 @@ jobs:
           RUNNER_RUNTIME: runc
       - name: Install Playwright browser
         run: pnpm --filter @forge/web exec playwright install --with-deps chromium
-      - name: End-to-end tests
+      - name: End-to-end tests (production build, with performance budgets)
         run: pnpm test:e2e
+        env:
+          PERF: '1'
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

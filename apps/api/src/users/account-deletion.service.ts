@@ -47,7 +47,30 @@ export class AccountDeletionService implements OnApplicationBootstrap, OnModuleD
       take: 500,
     });
     for (const { id } of due) {
+      const db = this.prisma.client;
+      const mine = { where: { userId: id } };
       await this.prisma.client.$transaction([
+        // Everything the user created or that describes them (GDPR erasure). Attempt deletion
+        // cascades to replay events, follow-ups, reviews and appeals. Invoices stay in Stripe,
+        // where tax law requires keeping them; only the local link is removed.
+        db.submission.deleteMany(mine),
+        db.attempt.deleteMany(mine),
+        db.draft.deleteMany(mine),
+        db.note.deleteMany(mine),
+        db.bookmark.deleteMany(mine),
+        db.hintUse.deleteMany(mine),
+        db.problemProgress.deleteMany(mine),
+        db.mastery.deleteMany(mine),
+        db.reviewItem.deleteMany(mine),
+        db.lessonProgress.deleteMany(mine),
+        db.flagIssue.deleteMany(mine),
+        db.flagSubmission.deleteMany(mine),
+        db.xpEvent.deleteMany(mine),
+        db.streak.deleteMany(mine),
+        db.placementResult.deleteMany(mine),
+        db.subscription.deleteMany(mine),
+        db.entitlement.deleteMany(mine),
+        db.billingCustomer.deleteMany(mine),
         this.prisma.client.session.deleteMany({ where: { userId: id } }),
         this.prisma.client.oAuthAccount.deleteMany({ where: { userId: id } }),
         this.prisma.client.totpSecret.deleteMany({ where: { userId: id } }),
@@ -66,6 +89,9 @@ export class AccountDeletionService implements OnApplicationBootstrap, OnModuleD
             birthYear: null,
             goal: null,
             languages: [],
+            timeZone: 'UTC',
+            emailDigestOptIn: false,
+            digestSentWeek: null,
             deletedAt: now,
           },
         }),

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import './globals.css';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { parseTheme, THEME_COOKIE } from '@/lib/theme';
 
@@ -26,6 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </a>
         <SiteHeader theme={theme} />
         <main id="main">{children}</main>
+        <SiteFooter />
       </body>
     </html>
   );

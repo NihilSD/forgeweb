@@ -1,0 +1,30 @@
+name: OWASP ZAP baseline
+
+# Passive scan of a running deployment (staging). Runs nightly and on demand; fails on any
+# alert not accepted in .zap/rules.tsv. Set the STAGING_URL repository variable first.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Base URL to scan (defaults to vars.STAGING_URL)
+        required: false
+  schedule:
+    - cron: '23 3 * * *'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  zap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ inputs.target || vars.STAGING_URL }}
+          rules_file_name: .zap/rules.tsv
+          fail_action: true
+          allow_issue_writing: false

@@ -101,7 +101,7 @@ test.describe('workspace', () => {
     await page.getByRole('button', { name: 'Submit flag' }).click();
     await expect(page.getByText('Correct flag. Well done!')).toBeVisible();
     // The rules are one click away from every flag challenge.
-    const rules = page.getByRole('link', { name: 'challenge rules' });
+    const rules = page.getByRole('link', { name: 'challenge rules', exact: true });
     await expect(rules).toHaveCount(2); // statement + flag panel
     await rules.first().click();
     await expect(page.getByRole('heading', { name: 'Security challenge rules' })).toBeVisible();

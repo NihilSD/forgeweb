@@ -1,0 +1,3 @@
+# CI-only test key committed before L12 (decodes to "ci-only-encryption-key-32-bytes!"); never used
+# outside CI. CI now generates throwaway secrets per run. See docs/SECURITY_REVIEW.md.
+43907e8256547cbdbb7cdb4fbd137efcaea9657d:.github/workflows/ci.yml:generic-api-key:21

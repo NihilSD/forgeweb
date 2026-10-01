@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { totpAt } from '../src/auth/totp.js';
 import {
@@ -307,6 +308,25 @@ describe('data export and deletion', () => {
     const text = JSON.stringify(res.body);
     expect(text).toContain(email);
     expect(text).not.toMatch(/argon2|passwordHash|tokenHash|encryptedSecret/);
+    // Every kind of user data has a section.
+    for (const section of [
+      'submissions',
+      'drafts',
+      'notes',
+      'bookmarks',
+      'hints',
+      'mastery',
+      'problemProgress',
+      'reviewQueue',
+      'lessons',
+      'flagSubmissions',
+      'verifiedAttempts',
+      'xp',
+      'streak',
+      'placement',
+      'billing',
+    ])
+      expect(res.body, section).toHaveProperty(section);
   });
 
   it('schedules deletion, signs out everywhere and purges after 30 days', async () => {
@@ -325,6 +345,92 @@ describe('data export and deletion', () => {
     expect(row.passwordHash).toBeNull();
     const login = await ctx.client().post('/auth/login', { email, password: STRONG_PASSWORD });
     expect(login.status).toBe(401);
+  });
+
+  it("purges every table that holds the user's data (GDPR erasure)", async () => {
+    const { importProblems } = await import('../src/problems/importer.js');
+    await importProblems(ctx.prisma, resolve(import.meta.dirname, '../../../content/problems'), {
+      publishDrafts: true,
+    });
+    const { client, user } = await createUser(ctx);
+    const p = await ctx.prisma.problem.findUniqueOrThrow({ where: { slug: 'two-sum-orders' } });
+    const userId = user.id;
+    const problemId = p.id;
+    await client.req('put', '/problems/two-sum-orders/drafts/python', { code: 'my code' });
+    await client.req('put', '/problems/two-sum-orders/note', { text: 'my note' });
+    await client.req('put', '/problems/two-sum-orders/bookmark', {});
+    await client.post('/problems/two-sum-orders/hints/1/reveal');
+    const db = ctx.prisma;
+    await db.submission.create({
+      data: {
+        userId,
+        problemId,
+        version: 1,
+        language: 'python',
+        code: 'x',
+        kind: 'submit',
+        seed: 1,
+      },
+    });
+    const attempt = await db.attempt.create({
+      data: {
+        userId,
+        problemId,
+        version: 1,
+        language: 'python',
+        seed: 1,
+        instanceHash: 'h',
+        consentAt: new Date(),
+        startedAt: new Date(),
+        endsAt: new Date(),
+      },
+    });
+    await db.attemptEvent.create({
+      data: {
+        attemptId: attempt.id,
+        seq: 0,
+        source: 'client',
+        t: 0,
+        type: 'batch',
+        count: 1,
+        payload: Buffer.from('x'),
+      },
+    });
+    await db.problemProgress.create({ data: { userId, problemId } });
+    await db.mastery.create({ data: { userId, tag: 'arrays', points: 20, level: 1 } });
+    await db.reviewItem.create({ data: { userId, problemId, dueAt: new Date() } });
+    await db.flagIssue.create({ data: { userId, problemId, flagHash: `h-${userId}` } });
+    await db.flagSubmission.create({ data: { userId, problemId, valueHash: 'v', correct: false } });
+    await db.xpEvent.create({
+      data: { userId, amount: 5, reason: 'lesson', sourceKey: 'k', at: new Date() },
+    });
+    await db.streak.create({ data: { userId, current: 1, longest: 1 } });
+    await db.placementResult.create({ data: { userId, skipped: true } });
+    await db.billingCustomer.create({ data: { userId, stripeCustomerId: `cus_${userId}` } });
+    await db.subscription.create({
+      data: { userId, stripeSubscriptionId: `sub_${userId}`, status: 'canceled' },
+    });
+    await db.entitlement.create({ data: { userId, plan: 'free' } });
+
+    await client.post('/me/delete', { password: STRONG_PASSWORD, confirm: 'DELETE' });
+    const { AccountDeletionService } = await import('../src/users/account-deletion.service.js');
+    await ctx.app.get(AccountDeletionService).purgeDue(new Date(Date.now() + 31 * 86_400_000));
+
+    // Every table with a userId column, found from the schema itself, so new tables are covered.
+    const tables = await db.$queryRaw<{ table_name: string }[]>`
+      SELECT table_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND column_name = 'userId'`;
+    expect(tables.length).toBeGreaterThan(15);
+    const left: string[] = [];
+    for (const { table_name } of tables) {
+      const [row] = await db.$queryRawUnsafe<{ n: bigint }[]>(
+        `SELECT count(*) AS n FROM "${table_name}" WHERE "userId" = $1::uuid`,
+        userId,
+      );
+      if (Number(row!.n) > 0) left.push(table_name);
+    }
+    expect(left).toEqual([]);
+    expect(await db.attemptEvent.count({ where: { attemptId: attempt.id } })).toBe(0);
   });
 
   it('lets a user cancel a scheduled deletion by signing in', async () => {

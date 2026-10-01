@@ -2,7 +2,15 @@ import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
 // Local runs read the root .env (e.g. PLAYWRIGHT_CHROMIUM_PATH); CI sets variables directly.
-if (existsSync('../../.env')) process.loadEnvFile('../../.env');
+if (existsSync('../../.env')) {
+  // Next types NODE_ENV as read-only; this config runs before Next and may restore it.
+  const env = process.env as Record<string, string | undefined>;
+  const nodeEnv = env.NODE_ENV;
+  process.loadEnvFile('../../.env');
+  // .env says NODE_ENV=development for the API; `next build` must not inherit it.
+  if (nodeEnv === undefined) delete env.NODE_ENV;
+  else env.NODE_ENV = nodeEnv;
+}
 
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH;
 const reuse = !process.env.CI;

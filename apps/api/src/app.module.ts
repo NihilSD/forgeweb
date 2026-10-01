@@ -234,6 +234,29 @@ export class PracticeModule implements OnModuleInit {
         select: { problem: { select: { slug: true } }, createdAt: true },
       }),
     );
+    this.exporter.register('problemProgress', (userId) =>
+      db.problemProgress.findMany({
+        where: { userId },
+        select: {
+          problem: { select: { slug: true } },
+          solvedAt: true,
+          gaveUpAt: true,
+          failedSubmits: true,
+          hintsAtSolve: true,
+        },
+      }),
+    );
+    this.exporter.register('reviewQueue', (userId) =>
+      db.reviewItem.findMany({
+        where: { userId },
+        select: {
+          problem: { select: { slug: true } },
+          stage: true,
+          dueAt: true,
+          completedAt: true,
+        },
+      }),
+    );
     this.exporter.register('xp', (userId) =>
       db.xpEvent.findMany({
         where: { userId },

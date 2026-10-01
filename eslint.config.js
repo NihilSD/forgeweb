@@ -43,6 +43,11 @@ export default tseslint.config(
     rules: { 'no-console': 'off' },
   },
   {
+    // k6 load scripts run in k6's runtime, which provides __ENV and __VU.
+    files: ['infra/load/**/*.js'],
+    languageOptions: { globals: { __ENV: 'readonly', __VU: 'readonly' } },
+  },
+  {
     // NestJS resolves constructor-injected classes at runtime, so they must stay value imports.
     // no-useless-assignment does not see values used only inside parameter decorators.
     files: ['apps/api/**/*.ts'],

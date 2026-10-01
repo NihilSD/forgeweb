@@ -1,24 +1,28 @@
+import { Alert } from '@forge/ui';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { Markdown } from '@/components/markdown';
+import { DRAFT_NOTE, LEGAL_DOCS } from './docs';
 
-const DOCS: Record<string, { title: string; body: string }> = {
-  terms: {
-    title: 'Terms of service',
-    body: 'Draft pending legal review (phase L12). Forge is for people aged 16 and over.',
-  },
-  privacy: {
-    title: 'Privacy policy',
-    body: 'Draft pending legal review (phase L12). Data is stored in the EU. You can export or delete your data at any time from Settings.',
-  },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ doc: string }>;
+}): Promise<Metadata> {
+  const { doc } = await params;
+  return { title: LEGAL_DOCS[doc]?.title ?? 'Legal' };
+}
 
 export default async function LegalPage({ params }: { params: Promise<{ doc: string }> }) {
   const { doc } = await params;
-  const page = DOCS[doc];
+  const page = LEGAL_DOCS[doc];
   if (!page) notFound();
   return (
-    <article className="mx-auto max-w-2xl px-4 py-12">
+    <article className="mx-auto grid max-w-3xl gap-4 px-4 py-12">
       <h1 className="text-2xl font-semibold">{page.title}</h1>
-      <p className="mt-4 text-muted-foreground">{page.body}</p>
+      <p className="text-sm text-muted-foreground">Last updated {page.updated}</p>
+      <Alert>{DRAFT_NOTE}</Alert>
+      <Markdown>{page.body}</Markdown>
     </article>
   );
 }
