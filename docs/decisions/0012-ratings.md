@@ -64,3 +64,8 @@ only when a problem is created, so re-imports never reset it (tested).
 
 - Contest and duel events (V1.2, V1.3) plug into the same `RatingChange` table (`kind`).
 - Rating leaderboards and public profile display (V1.4, V1.7).
+
+## Verification (2026-10-01)
+
+`pnpm lint`, `pnpm format:check`, `pnpm test` (shared 15, problem-kit 39, web 21, runner 63,
+API 219) and `pnpm test:e2e` (34 passed; the 5 perf tests run separately with `PERF=1`) all pass.
