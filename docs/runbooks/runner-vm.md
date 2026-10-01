@@ -1,5 +1,9 @@
 # Runbook: runner VM
 
+**Automated:** `infra/runner/install.sh` does sections 2–6 below (Docker, gVisor, firewall,
+service user, runner bundle from the `forge-runner` image, sandbox images, systemd unit). Read
+this page to know what it does; then do §7 by hand.
+
 Runner hosts execute code written by strangers. Treat them as hostile: separate VMs, separate
 network, nothing valuable on them.
 
