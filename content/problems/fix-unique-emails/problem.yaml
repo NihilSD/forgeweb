@@ -1,0 +1,16 @@
+id: fix-unique-emails
+title: Fix the Mailing List
+track: debugging
+format: fix-code
+difficulty: medium
+tags: [hashing, strings]
+languages: [python, javascript]
+mode: practice
+limits: { timeMs: 2000, memoryMb: 256, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+entry:
+  python: first_seen
+  javascript: firstSeen
+comparator: exact

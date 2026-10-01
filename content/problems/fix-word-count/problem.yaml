@@ -1,0 +1,16 @@
+id: fix-word-count
+title: Fix the Word Counter
+track: debugging
+format: fix-code
+difficulty: easy
+tags: [strings, hashing]
+languages: [python, javascript]
+mode: practice
+limits: { timeMs: 2000, memoryMb: 256, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+entry:
+  python: word_counts
+  javascript: wordCounts
+comparator: exact

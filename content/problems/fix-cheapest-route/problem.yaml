@@ -1,0 +1,16 @@
+id: fix-cheapest-route
+title: Fix the Route Planner
+track: debugging
+format: fix-code
+difficulty: hard
+tags: [graphs]
+languages: [python, javascript]
+mode: practice
+limits: { timeMs: 3000, memoryMb: 256, outputKb: 64 }
+authors: [forge-team]
+version: 1
+review: needs-review
+entry:
+  python: cheapest_cost
+  javascript: cheapestCost
+comparator: exact
