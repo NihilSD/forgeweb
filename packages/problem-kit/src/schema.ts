@@ -122,7 +122,9 @@ export interface FollowUpQuestion {
    */
   answer:
     | { type: 'static'; value: string }
-    | { type: 'run'; args: unknown[]; mode: 'value' | 'passes'; expected?: unknown };
+    | { type: 'run'; args: unknown[]; mode: 'value' | 'passes'; expected?: unknown }
+    /** Change questions: any line of the user's code matching `pattern` (and not `exclude`). */
+    | { type: 'lines'; pattern: string; exclude?: string };
 }
 
 export type FollowUpsBuilder = (

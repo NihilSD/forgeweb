@@ -1,7 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Prisma, type Submission as SubmissionRow, type User } from '@forge/db';
-import { grade, type GradedTest, type RunnerCallback, type TestSuite } from '@forge/problem-kit';
+import {
+  grade,
+  type GradedTest,
+  PROBE_PREFIX,
+  probeTests,
+  type ProbeResult,
+  type RunnerCallback,
+  selectFollowUps,
+  type TestSuite,
+} from '@forge/problem-kit';
 import {
   ErrorCode,
   type ExecRequest,
@@ -130,6 +139,9 @@ export class SubmissionsService {
           ...(t.args ? { args: t.args } : {}),
           ...(t.setupSql ? { setupSql: t.setupSql } : {}),
         }));
+    // Verified submits also run the user's code on the follow-up inputs (spec 7.3), so the
+    // answers come from their own code. Probe results are never graded or shown as tests.
+    if (row.attemptId && row.kind === 'submit') tests.push(...(await this.probes(row)));
     const entry = manifest.entry?.[row.language];
     return {
       suite,
@@ -141,6 +153,25 @@ export class SubmissionsService {
         limits: this.content.limits(version),
       },
     };
+  }
+
+  /** Follow-up questions for a verified submission: deterministic from instance, code and seed. */
+  async followUpsFor(row: SubmissionRow) {
+    const version = await this.content.version(row.problemId, row.version);
+    const mod = await this.content.module(version);
+    if (!mod.followups) return [];
+    const gen = await this.content.instance(version, row.seed >>> 0);
+    return selectFollowUps(mod.followups(gen.instance, row.code, row.language), row.seed >>> 0);
+  }
+
+  private async probes(row: SubmissionRow) {
+    try {
+      return probeTests(await this.followUpsFor(row));
+    } catch (err) {
+      // A follow-up generator crash must not break grading; the attempt gets fewer questions.
+      this.logger.error(`followups failed for ${row.problemId}: ${(err as Error).message}`);
+      return [];
+    }
   }
 
   private async dispatch(row: SubmissionRow) {
@@ -218,13 +249,23 @@ export class SubmissionsService {
     const { suite } = await this.suiteFor(row);
     const version = await this.content.version(row.problemId, row.version);
     const g = grade(suite, result, this.content.manifest(version).comparator);
+    // SERVER-ONLY: raw follow-up probe results, keyed by question id (see toView).
+    const probes: Record<string, ProbeResult> = {};
+    for (const t of result.tests) {
+      if (t.id.startsWith(PROBE_PREFIX))
+        probes[t.id.slice(PROBE_PREFIX.length)] = { status: t.status, value: t.value };
+    }
     return {
       ...common,
       verdict: g.verdict,
       runtimeMs: g.runtimeMs,
       testsPassed: g.testsPassed,
       testsTotal: g.testsTotal,
-      result: { tests: g.tests, message: g.message ?? null } as unknown as Prisma.InputJsonValue,
+      result: {
+        tests: g.tests,
+        message: g.message ?? null,
+        ...(Object.keys(probes).length ? { probes } : {}),
+      } as unknown as Prisma.InputJsonValue,
     };
   }
 

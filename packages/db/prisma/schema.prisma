@@ -62,6 +62,8 @@ model User {
   masteries         Mastery[]
   reviewItems       ReviewItem[]
   lessonProgresses  LessonProgress[]
+  attempts          Attempt[]
+  reviewsGiven      Review[]          @relation("Reviewer")
 
   @@index([deletionRequestedAt])
 }
@@ -230,6 +232,7 @@ model Problem {
   bookmarks         Bookmark[]
   notes             Note[]
   reviewItems       ReviewItem[]
+  attempts          Attempt[]
 
   @@index([trackId, status])
   @@index([status, difficulty])
@@ -520,4 +523,140 @@ model LessonProgress {
   updatedAt   DateTime @updatedAt
 
   @@unique([userId, lessonId])
+}
+
+// ---------------------------------------------------------------- L8: verified attempts
+
+enum AttemptStatus {
+  in_progress
+  followups
+  verified
+  unverified
+  review
+  appealed
+  expired
+}
+
+/// Spec 7.1: one verified attempt on a unique instance of a template.
+model Attempt {
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String         @db.Uuid
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId       String         @db.Uuid
+  problem         Problem        @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  version         Int
+  language        String
+  /// Random instance seed, stored as int32 and read back with >>> 0.
+  seed            Int
+  /// sha256 of the instance parameters, so two users don't get the same instance.
+  instanceHash    String
+  /// Consent is given for every attempt (spec 3.2).
+  consentAt       DateTime
+  startedAt       DateTime
+  endsAt          DateTime
+  submittedAt     DateTime?
+  /// The accepted submission that ended the coding phase.
+  submissionId    String?        @unique @db.Uuid
+  /// Percentage of tests passed by the best submission.
+  score           Int?
+  integrityScore  Int?
+  /// Integrity signal breakdown. Moderators only.
+  signals         Json?
+  status          AttemptStatus  @default(in_progress)
+  finishedAt      DateTime?
+  /// Spec 3.2: replays are deleted after 12 months unless the user keeps them public.
+  replayPublic    Boolean        @default(false)
+  replayDeletedAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  events          AttemptEvent[]
+  followUps       FollowUp[]
+  reviews         Review[]
+  appeal          Appeal?
+
+  @@index([userId, startedAt])
+  @@index([problemId, status])
+  @@index([problemId, instanceHash])
+  @@index([status, submittedAt])
+}
+
+/// Spec 7.2: recorded events, stored compressed. Client batches carry `seq` (idempotent retries);
+/// server-recorded events (runs, submits, follow-up answers) have no `seq`.
+model AttemptEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  attemptId String   @db.Uuid
+  attempt   Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  seq       Int?
+  /// client | server
+  source    String
+  /// Milliseconds since the attempt started, of the first event in the payload.
+  t         Int
+  /// batch (client) | run | submit | followup (server)
+  type      String
+  count     Int
+  /// gzip-compressed JSON array of events.
+  payload   Bytes
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([attemptId, seq])
+  @@index([attemptId, t])
+}
+
+/// Spec 7.3: a follow-up question, graded against the user's own code.
+model FollowUp {
+  id         String    @id @default(uuid()) @db.Uuid
+  attemptId  String    @db.Uuid
+  attempt    Attempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  kind       String
+  prompt     String
+  options    Json?
+  /// SERVER-ONLY: accepted answers, derived from the user's own code.
+  expected   Json
+  order      Int
+  shownAt    DateTime?
+  answer     String?
+  correct    Boolean?
+  answeredMs Int?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([attemptId, questionId])
+}
+
+/// A moderator's decision on an attempt in review or under appeal.
+model Review {
+  id         String   @id @default(uuid()) @db.Uuid
+  attemptId  String   @db.Uuid
+  attempt    Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  reviewerId String?  @db.Uuid
+  reviewer   User?    @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  /// verified | unverified
+  decision   String
+  notes      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([attemptId])
+}
+
+enum AppealOutcome {
+  pending
+  upheld
+  denied
+}
+
+/// One appeal per attempt (spec 7.4: users can appeal any non-verified result).
+model Appeal {
+  id        String        @id @default(uuid()) @db.Uuid
+  attemptId String        @unique @db.Uuid
+  attempt   Attempt       @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  reason    String
+  /// Status before the appeal, restored if it is denied.
+  previous  AttemptStatus
+  outcome   AppealOutcome @default(pending)
+  decidedAt DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 }

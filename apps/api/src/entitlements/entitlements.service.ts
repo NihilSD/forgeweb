@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { type Entitlements, ErrorCode, type Feature, type Plan, PLAN_LIMITS } from '@forge/shared';
 import { ApiError } from '../common/api-error.js';
+import { localDay, localWeekStart } from '../common/time.js';
+import { PrismaService } from '../infra/prisma.service.js';
 
 /**
  * The only place plan limits are decided (CLAUDE.md). Limits come from packages/shared/plans.ts;
@@ -8,6 +10,8 @@ import { ApiError } from '../common/api-error.js';
  */
 @Injectable()
 export class EntitlementsService {
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+
   planResolver: (userId: string) => Promise<Plan> = async () => 'free';
 
   plan(userId: string): Promise<Plan> {
@@ -49,5 +53,24 @@ export class EntitlementsService {
         },
       );
     }
+  }
+
+  /**
+   * Verified challenges the user may still start this week (spec 10: Free 3 per week, counted
+   * from Monday in the user's time zone). Null = unlimited.
+   */
+  async verifiedStartsRemaining(
+    user: { id: string; timeZone: string },
+    now = new Date(),
+  ): Promise<number | null> {
+    const limit = PLAN_LIMITS[await this.plan(user.id)].verifiedPerWeek;
+    if (limit === null) return null;
+    const monday = localWeekStart(now, user.timeZone);
+    const recent = await this.prisma.client.attempt.findMany({
+      where: { userId: user.id, startedAt: { gte: new Date(now.getTime() - 8 * 86_400_000) } },
+      select: { startedAt: true },
+    });
+    const used = recent.filter((a) => localDay(a.startedAt, user.timeZone) >= monday).length;
+    return Math.max(0, limit - used);
   }
 }

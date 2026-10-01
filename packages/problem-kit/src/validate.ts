@@ -7,6 +7,7 @@ import { grade } from './grade.js';
 import { type GeneratedInstance, generateInstance, loadModule } from './load.js';
 import { placeholders, render } from './render.js';
 import { fileText } from './files.js';
+import { checkFollowUps } from './followups.js';
 import type { PackageModule } from './schema.js';
 
 export interface ValidationReport {
@@ -134,6 +135,7 @@ export async function validatePackage(
   } else {
     await validateCode(pkg, instances, opts.executor, report);
   }
+  if (mod.followups) validateFollowUps(pkg, mod, instances, report);
   report.ok = report.errors.length === 0;
   return report;
 }
@@ -289,5 +291,32 @@ async function validateFlag(
     const other = flagFor(VALIDATOR_FLAG_SECRET, `user-${i.seed + 1}`, pkg.manifest.id);
     if (blob.includes(other))
       report.errors.push(`seed ${i.seed}: files contain another user's flag`);
+  }
+}
+
+/** Spec 7.3: every reference solution must be able to answer the follow-ups on a sample of seeds. */
+function validateFollowUps(
+  pkg: BuiltPackage,
+  mod: PackageModule,
+  instances: GeneratedInstance[],
+  report: ValidationReport,
+) {
+  const seen = new Set<string>();
+  for (const i of instances.slice(0, 10)) {
+    for (const [language, template] of Object.entries(pkg.references)) {
+      if (!template) continue;
+      const code = render(template, i.instance.params);
+      let problems: string[];
+      try {
+        problems = checkFollowUps(mod.followups!(i.instance, code, language), code);
+      } catch (err) {
+        problems = [`followups.ts threw: ${(err as Error).message}`];
+      }
+      for (const p of problems) {
+        const msg = `follow-ups (${language}): ${p}`;
+        if (!seen.has(msg)) report.errors.push(`${msg} (seed ${i.seed})`);
+        seen.add(msg);
+      }
+    }
   }
 }

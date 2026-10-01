@@ -1,5 +1,9 @@
 import type { FollowUpQuestion, Instance } from '@forge/problem-kit';
 
+/** The function's own signature line mentions the parameter but isn't where the rule lives. */
+const SIGNATURE =
+  '^\\s*(def |(export\\s+)?(async\\s+)?function\\b|(export\\s+)?(const|let|var)\\s+\\w+\\s*=\\s*(async\\s*)?\\()';
+
 /** Verified-mode follow-ups (spec 7.3), graded by running the user's own code. */
 export default function followups(
   instance: Instance,
@@ -26,6 +30,13 @@ export default function followups(
       prompt: 'Does your code return [0, 1] for amounts = [50, 50] and target = 100?',
       options: ['Yes', 'No'],
       answer: { type: 'run', args: [[50, 50], 100], mode: 'passes', expected: [0, 1] },
+    },
+    {
+      id: 'change-target',
+      kind: 'change',
+      prompt:
+        'Suppose the rule changes: the two amounts must add up to at most the target instead of exactly the target. Which line of your code would you change first? Enter its line number.',
+      answer: { type: 'lines', pattern: 'target', exclude: SIGNATURE },
     },
     {
       id: 'explain-structure',

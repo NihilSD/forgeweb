@@ -5,6 +5,7 @@ import {
   generateInstance,
   loadModule,
   type Manifest,
+  type PackageModule,
   render,
   seedFrom,
   type TestSuite,
@@ -57,8 +58,12 @@ export class ContentService {
     return seedFrom(`practice:${userId ?? 'anonymous'}:${problemId}`);
   }
 
+  module(v: ProblemVersion): Promise<PackageModule> {
+    return loadModule(v.moduleCode, v.packageHash);
+  }
+
   async instance(v: ProblemVersion, seed: number, flag?: string): Promise<GeneratedInstance> {
-    const mod = await loadModule(v.moduleCode, v.packageHash);
+    const mod = await this.module(v);
     return generateInstance(mod, seed, flag);
   }
 

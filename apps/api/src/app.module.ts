@@ -8,6 +8,8 @@ import {
 } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AdminController } from './admin/admin.controller.js';
+import { AdminAttemptsController, AttemptsController } from './attempts/attempts.controller.js';
+import { AttemptsService } from './attempts/attempts.service.js';
 import { AuditService } from './audit/audit.service.js';
 import { AuthController } from './auth/auth.controller.js';
 import { AuthGuard, SessionMiddleware } from './auth/auth.guard.js';
@@ -214,6 +216,43 @@ export class PracticeModule implements OnModuleInit {
 }
 
 @Module({
+  imports: [ProblemsModule, SubmissionsModule],
+  controllers: [AttemptsController, AdminAttemptsController],
+  providers: [AttemptsService],
+  exports: [AttemptsService],
+})
+export class AttemptsModule implements OnModuleInit {
+  constructor(
+    @Inject(AttemptsService) private readonly attempts: AttemptsService,
+    @Inject(SubmissionsService) private readonly submissions: SubmissionsService,
+    @Inject(DataExportService) private readonly exporter: DataExportService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
+
+  onModuleInit() {
+    this.submissions.hooks.push({ onFinished: (sub) => this.attempts.onSubmissionFinished(sub) });
+    this.exporter.register('verifiedAttempts', (userId) =>
+      this.prisma.client.attempt.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          problem: { select: { slug: true } },
+          language: true,
+          status: true,
+          startedAt: true,
+          submittedAt: true,
+          score: true,
+          integrityScore: true,
+          followUps: { select: { prompt: true, answer: true, correct: true, answeredMs: true } },
+          appeal: { select: { reason: true, outcome: true } },
+        },
+        orderBy: { startedAt: 'desc' },
+      }),
+    );
+  }
+}
+
+@Module({
   imports: [
     InfraModule,
     CoreModule,
@@ -222,6 +261,7 @@ export class PracticeModule implements OnModuleInit {
     ProblemsModule,
     SubmissionsModule,
     PracticeModule,
+    AttemptsModule,
   ],
   controllers: [HealthController],
   providers: [

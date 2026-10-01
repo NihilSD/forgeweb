@@ -135,6 +135,29 @@ describe('validator', () => {
     expect(report.errors.join('\n')).toMatch(/followups\.ts is required/);
   });
 
+  it('checks follow-ups against the reference solutions', async () => {
+    const ok = await validatePackage(join(CONTENT, 'two-sum-orders'), { executor, seeds: SEEDS });
+    expect(ok.errors).toEqual([]);
+    // A "change" question whose rule appears on no line of the reference cannot be answered.
+    const noLine = await mutated('two-sum-orders', (d) =>
+      edit(join(d, 'followups.ts'), /pattern: '[^']*'/, "pattern: 'no_such_identifier'"),
+    );
+    expect((await validatePackage(noLine, { executor, seeds: SEEDS })).errors.join('\n')).toMatch(
+      /follow-up "change-[a-z-]+".*matches no line/,
+    );
+    // A static answer must be one of the options.
+    const badOption = await mutated('two-sum-orders', (d) =>
+      edit(
+        join(d, 'followups.ts'),
+        "? 'A hash map / dictionary of seen amounts'",
+        "? 'A hash table'",
+      ),
+    );
+    expect(
+      (await validatePackage(badOption, { executor, seeds: SEEDS })).errors.join('\n'),
+    ).toMatch(/answer is not one of its options/);
+  });
+
   it('checks the flag solver recovers each user flag', async () => {
     const ok = await validatePackage(join(CONTENT, 'caesar-intercept'), { executor, seeds: SEEDS });
     expect(ok.errors).toEqual([]);

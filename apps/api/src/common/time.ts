@@ -13,3 +13,11 @@ export function localDay(date: Date, timeZone: string): string {
 }
 
 export const DAY_MS = 86_400_000;
+
+/** The Monday (YYYY-MM-DD) of the user's local week containing `date`. */
+export function localWeekStart(date: Date, timeZone: string): string {
+  const day = localDay(date, timeZone);
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}

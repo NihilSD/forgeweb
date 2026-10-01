@@ -51,7 +51,20 @@ export class PracticeService {
 
   // ------------------------------------------------------------------ hints
 
+  /** Spec 7 / CLAUDE.md: no help while a verified attempt on this problem is open. */
+  private async assertNoOpenAttempt(userId: string, problemId: string) {
+    const open = await this.db.attempt.count({
+      where: { userId, problemId, status: { in: ['in_progress', 'followups'] } },
+    });
+    if (open > 0)
+      throw new ApiError(
+        ErrorCode.ATTEMPT_CLOSED,
+        'Hints and editorials are unavailable during a verified attempt on this problem.',
+      );
+  }
+
   async hints(user: User, problem: Problem & { hintTexts: string[] }): Promise<Hints> {
+    await this.assertNoOpenAttempt(user.id, problem.id);
     const [used, limits] = await Promise.all([
       this.db.hintUse.findMany({ where: { userId: user.id, problemId: problem.id } }),
       this.entitlements.get(user.id),
@@ -80,6 +93,7 @@ export class PracticeService {
     problem: Problem & { hintTexts: string[] },
     level: number,
   ): Promise<Hints> {
+    await this.assertNoOpenAttempt(user.id, problem.id);
     const used = await this.db.hintUse.findMany({
       where: { userId: user.id, problemId: problem.id },
     });
@@ -133,6 +147,7 @@ export class PracticeService {
   }
 
   async editorial(user: User, problem: Problem, markdown: string): Promise<{ markdown: string }> {
+    await this.assertNoOpenAttempt(user.id, problem.id);
     await this.entitlements.require(user.id, 'editorials', 'Editorials');
     const progress = await this.progress(user, problem.id);
     if (!progress.solved && !progress.gaveUp) {
