@@ -20,6 +20,9 @@ export async function SiteHeader({ theme }: { theme: Theme }) {
           <Link href="/problems" className="hover:text-foreground">
             Problems
           </Link>
+          <Link href="/daily" className="hover:text-foreground">
+            Daily
+          </Link>
           {me ? (
             <>
               <Link href="/verified" className="hover:text-foreground">

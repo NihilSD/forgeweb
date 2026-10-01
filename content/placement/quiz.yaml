@@ -4,53 +4,63 @@ status: needs-review
 questions:
   - id: arrays-index
     tag: arrays
-    prompt: "In Python, what does [3, 1, 2][1] evaluate to?"
-    options: ["3", "1", "2", "An error"]
+    prompt: 'In Python, what does [3, 1, 2][1] evaluate to?'
+    options: ['3', '1', '2', 'An error']
     answer: 1
   - id: strings-reverse
     tag: strings
     prompt: "In Python, what is 'forge'[::-1]?"
-    options: ["'egrof'", "'forge'", "'f'", "An error"]
+    options: ["'egrof'", "'forge'", "'f'", 'An error']
     answer: 0
   - id: hashing-seen
     tag: hashing
-    prompt: "Which structure checks whether a value was seen before in O(1) time on average?"
-    options: ["A sorted list", "A hash set", "A linked list", "A stack"]
+    prompt: 'Which structure checks whether a value was seen before in O(1) time on average?'
+    options: ['A sorted list', 'A hash set', 'A linked list', 'A stack']
     answer: 1
   - id: two-pointers-move
     tag: two-pointers
-    prompt: "In a sorted array you look for two numbers that add up to a target, with one pointer at each end. The current sum is too small. What do you do?"
+    prompt: 'In a sorted array you look for two numbers that add up to a target, with one pointer at each end. The current sum is too small. What do you do?'
     options:
-      ["Move the left pointer right", "Move the right pointer left", "Move both pointers inward", "Start again from the beginning"]
+      [
+        'Move the left pointer right',
+        'Move the right pointer left',
+        'Move both pointers inward',
+        'Start again from the beginning',
+      ]
     answer: 0
   - id: sorting-complexity
     tag: sorting
-    prompt: "What is the time complexity of sorting n items with merge sort?"
-    options: ["O(n)", "O(n log n)", "O(n²)", "O(log n)"]
+    prompt: 'What is the time complexity of sorting n items with merge sort?'
+    options: ['O(n)', 'O(n log n)', 'O(n²)', 'O(log n)']
     answer: 1
   - id: recursion-base-case
     tag: recursion
-    prompt: "A recursive function has no base case. What usually happens when you call it?"
+    prompt: 'A recursive function has no base case. What usually happens when you call it?'
     options:
-      ["It returns nothing", "It recurses until the call stack overflows", "It returns its first argument", "It runs exactly once"]
+      [
+        'It returns nothing',
+        'It recurses until the call stack overflows',
+        'It returns its first argument',
+        'It runs exactly once',
+      ]
     answer: 1
   - id: bfs-shortest
     tag: bfs-dfs
-    prompt: "Which search finds the shortest path (fewest steps) in an unweighted grid?"
-    options: ["Depth-first search", "Breadth-first search", "Binary search", "Linear search"]
+    prompt: 'Which search finds the shortest path (fewest steps) in an unweighted grid?'
+    options: ['Depth-first search', 'Breadth-first search', 'Binary search', 'Linear search']
     answer: 1
   - id: select-where
     tag: select
-    prompt: "Which SQL clause keeps only the rows whose price is above 10?"
-    options: ["ORDER BY price > 10", "WHERE price > 10", "GROUP BY price > 10", "LIMIT 10"]
+    prompt: 'Which SQL clause keeps only the rows whose price is above 10?'
+    options: ['ORDER BY price > 10', 'WHERE price > 10', 'GROUP BY price > 10', 'LIMIT 10']
     answer: 1
   - id: joins-left
     tag: joins
-    prompt: "Customers without any orders must still appear in the result. With customers on the left, which join do you use?"
-    options: ["INNER JOIN", "LEFT JOIN", "CROSS JOIN", "No join is needed"]
+    prompt: 'Customers without any orders must still appear in the result. With customers on the left, which join do you use?'
+    options: ['INNER JOIN', 'LEFT JOIN', 'CROSS JOIN', 'No join is needed']
     answer: 1
   - id: encoding-base64
     tag: encoding
-    prompt: "The text Rm9yZ2U= is most likely…"
-    options: ["Encrypted with AES", "Base64-encoded", "A SHA-256 hash", "Hexadecimal"]
+    prompt: 'The text Rm9yZ2U= is most likely…'
+    options: ['Encrypted with AES', 'Base64-encoded', 'A SHA-256 hash', 'Hexadecimal']
     answer: 1
