@@ -66,6 +66,8 @@ export class AccountDeletionService implements OnApplicationBootstrap, OnModuleD
         db.flagIssue.deleteMany(mine),
         db.flagSubmission.deleteMany(mine),
         db.xpEvent.deleteMany(mine),
+        db.ratingChange.deleteMany(mine),
+        db.rating.deleteMany(mine),
         db.streak.deleteMany(mine),
         db.placementResult.deleteMany(mine),
         db.subscription.deleteMany(mine),

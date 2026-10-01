@@ -11,3 +11,5 @@ export * from './schemas/attempts.js';
 export * from './replay.js';
 export * from './schemas/engagement.js';
 export * from './schemas/billing.js';
+export * from './glicko2.js';
+export * from './schemas/ratings.js';

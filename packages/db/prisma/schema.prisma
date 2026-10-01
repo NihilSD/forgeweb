@@ -67,6 +67,8 @@ model User {
   attempts          Attempt[]
   reviewsGiven      Review[]          @relation("Reviewer")
   xpEvents          XpEvent[]
+  ratings           Rating[]
+  ratingChanges     RatingChange[]
   streak            Streak?
   placement         PlacementResult?
   billingCustomer   BillingCustomer?
@@ -171,14 +173,16 @@ model AuditLog {
 // ---------------------------------------------------------------- L3: problems
 
 model Track {
-  id        String           @id @default(uuid()) @db.Uuid
-  slug      String           @unique
-  name      String
-  order     Int
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  problems  Problem[]
-  dailies   DailyChallenge[]
+  id            String           @id @default(uuid()) @db.Uuid
+  slug          String           @unique
+  name          String
+  order         Int
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  problems      Problem[]
+  dailies       DailyChallenge[]
+  ratings       Rating[]
+  ratingChanges RatingChange[]
 }
 
 enum ProblemStatus {
@@ -214,6 +218,9 @@ model Problem {
   difficulty        Difficulty
   /// Starts from difficulty (spec 8); recalculated weekly from verified solve rates (v1).
   rating            Int
+  /// Glicko-2 RD of the problem rating; shrinks as the weekly job sees verified attempts (V1.1).
+  ratingDeviation   Float                    @default(200)
+  ratingVolatility  Float                    @default(0.06)
   tags              String[]
   formats           String[]
   languages         String[]
@@ -243,6 +250,7 @@ model Problem {
   reviewItems       ReviewItem[]
   attempts          Attempt[]
   dailies           DailyChallenge[]
+  ratingChanges     RatingChange[]
 
   @@index([trackId, status])
   @@index([status, difficulty])
@@ -817,4 +825,65 @@ model WebhookEvent {
   updatedAt   DateTime  @updatedAt
 
   @@index([status, createdAt])
+}
+
+/// Spec 8 / V1.1: Glicko-2 rating per user per track. Changed only by Competitive results
+/// (verified challenges now, contests and duels later), through the rating queue.
+model Rating {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId     String    @db.Uuid
+  track       Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  rating      Float     @default(1500)
+  rd          Float     @default(350)
+  volatility  Float     @default(0.06)
+  /// Rated events so far; the rating is shown from the 5th (placement).
+  events      Int       @default(0)
+  lastEventAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, trackId])
+  @@index([trackId, rating])
+}
+
+enum RatingEventKind {
+  verified
+  contest
+  duel
+}
+
+/// One rated event. `eventKey` (e.g. "attempt:<id>") makes every update idempotent.
+model RatingChange {
+  id           String          @id @default(uuid()) @db.Uuid
+  userId       String          @db.Uuid
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId      String          @db.Uuid
+  track        Track           @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  eventKey     String
+  kind         RatingEventKind
+  problemId    String?         @db.Uuid
+  problem      Problem?        @relation(fields: [problemId], references: [id], onDelete: SetNull)
+  /// 1 = solved and verified, 0 = not solved in time.
+  score        Float
+  opponent     Float
+  ratingBefore Float
+  ratingAfter  Float
+  rdBefore     Float
+  rdAfter      Float
+  volatility   Float
+  at           DateTime
+  createdAt    DateTime        @default(now())
+
+  @@unique([userId, eventKey])
+  @@index([userId, trackId, at])
+  @@index([problemId, at])
+}
+
+/// One row per ISO week the problem-rating recalculation has run (idempotent across instances).
+model ProblemRatingRun {
+  week      String   @id
+  updated   Int
+  createdAt DateTime @default(now())
 }

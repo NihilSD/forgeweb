@@ -14,6 +14,10 @@ import { BillingService } from './billing/billing.service.js';
 import { createStripeApi, STRIPE_API } from './billing/stripe-client.js';
 import { AdminAttemptsController, AttemptsController } from './attempts/attempts.controller.js';
 import { AttemptsService } from './attempts/attempts.service.js';
+import { ProblemRatingService } from './ratings/problem-rating.service.js';
+import { RatingsController } from './ratings/ratings.controller.js';
+import { RatingsScheduler } from './ratings/ratings.scheduler.js';
+import { RatingsService } from './ratings/ratings.service.js';
 import { ReplayPurgeScheduler } from './attempts/replay-purge.scheduler.js';
 import { AuditService } from './audit/audit.service.js';
 import { ENV, type Env } from './config/env.js';
@@ -364,6 +368,52 @@ export class AttemptsModule implements OnModuleInit {
   }
 }
 
+/** Spec 8 / V1.1: Glicko-2 ratings from Competitive results only. */
+@Module({
+  imports: [AttemptsModule],
+  controllers: [RatingsController],
+  providers: [RatingsService, ProblemRatingService, RatingsScheduler],
+  exports: [RatingsService],
+})
+export class RatingsModule implements OnModuleInit {
+  constructor(
+    @Inject(AttemptsService) private readonly attempts: AttemptsService,
+    @Inject(RatingsService) private readonly ratings: RatingsService,
+    @Inject(DataExportService) private readonly exporter: DataExportService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
+
+  onModuleInit() {
+    this.attempts.hooks.push({ onFinal: (id) => this.ratings.enqueueAttempt(id) });
+    this.exporter.register('ratings', async (userId) => ({
+      ratings: await this.prisma.client.rating.findMany({
+        where: { userId },
+        select: {
+          track: { select: { slug: true } },
+          rating: true,
+          rd: true,
+          volatility: true,
+          events: true,
+          lastEventAt: true,
+        },
+      }),
+      changes: await this.prisma.client.ratingChange.findMany({
+        where: { userId },
+        select: {
+          track: { select: { slug: true } },
+          kind: true,
+          problem: { select: { slug: true } },
+          score: true,
+          ratingBefore: true,
+          ratingAfter: true,
+          at: true,
+        },
+        orderBy: { at: 'asc' },
+      }),
+    }));
+  }
+}
+
 /** Spec L13: alerts, public status and metrics. */
 @Module({
   imports: [SubmissionsModule],
@@ -384,6 +434,7 @@ export class MonitoringModule {}
     PracticeModule,
     AttemptsModule,
     BillingModule,
+    RatingsModule,
     MonitoringModule,
   ],
   controllers: [HealthController],

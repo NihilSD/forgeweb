@@ -31,6 +31,9 @@ export async function SiteHeader({ theme }: { theme: Theme }) {
               <Link href="/skills" className="hover:text-foreground">
                 Skills
               </Link>
+              <Link href="/ratings" className="hover:text-foreground">
+                Ratings
+              </Link>
               {me.role === 'moderator' || me.role === 'superadmin' ? (
                 <Link href="/admin/reviews" className="hover:text-foreground">
                   Reviews

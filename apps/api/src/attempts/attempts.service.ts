@@ -67,6 +67,8 @@ const unpack = <T>(bytes: Uint8Array): T =>
 @Injectable()
 export class AttemptsService {
   private readonly logger = new Logger('Attempts');
+  /** Called when an attempt reaches a final result (ratings, V1.1). Errors are logged only. */
+  readonly hooks: { onFinal: (attemptId: string) => Promise<void> }[] = [];
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
@@ -542,7 +544,40 @@ export class AttemptsService {
         target: id,
         meta: { status: result.status, integrityScore: result.score },
       });
+      await this.fireFinal(id);
     }
+  }
+
+  private async fireFinal(id: string) {
+    for (const hook of this.hooks) {
+      await hook.onFinal(id).catch((err: Error) => this.logger.error(`onFinal: ${err.message}`));
+    }
+  }
+
+  /**
+   * Settles attempts nobody is looking at any more: past their time (expired, a loss for the
+   * rating) or with abandoned follow-ups (scored). Without this, abandoning a failing attempt
+   * would dodge the rating loss. Run by the ratings scheduler.
+   */
+  async expireStale(now = new Date()): Promise<number> {
+    const rows = await this.db.attempt.findMany({
+      where: {
+        OR: [
+          { status: 'in_progress', endsAt: { lt: new Date(now.getTime() - SUBMIT_GRACE_MS) } },
+          {
+            status: 'followups',
+            submittedAt: { lt: new Date(now.getTime() - ABANDONED_FOLLOWUPS_MS) },
+          },
+        ],
+      },
+      take: 200,
+    });
+    let settled = 0;
+    for (const row of rows) {
+      const after = await this.settle(row);
+      if (after.status !== row.status) settled++;
+    }
+    return settled;
   }
 
   /** Median time to an accepted submit among verified attempts (null until enough samples). */
@@ -572,10 +607,11 @@ export class AttemptsService {
         where: { attemptId: row.id, status: { in: ['queued', 'running'] } },
       });
       if (pending === 0) {
-        await this.db.attempt.updateMany({
+        const expired = await this.db.attempt.updateMany({
           where: { id: row.id, status: 'in_progress' },
           data: { status: 'expired', finishedAt: new Date() },
         });
+        if (expired.count === 1) await this.fireFinal(row.id);
       }
     } else if (
       row.status === 'followups' &&
@@ -729,6 +765,7 @@ export class AttemptsService {
       ip,
       meta: { decision: input.decision, appeal: Boolean(row.appeal) },
     });
+    await this.fireFinal(id);
   }
 
   /** Spec 3.2: delete replays older than 12 months unless the user keeps them public. */

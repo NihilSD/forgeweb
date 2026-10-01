@@ -11,6 +11,7 @@ import { AttemptsService } from '../src/attempts/attempts.service.js';
 import { totpAt } from '../src/auth/totp.js';
 import { EntitlementsService } from '../src/entitlements/entitlements.service.js';
 import { importProblems } from '../src/problems/importer.js';
+import { RatingsService } from '../src/ratings/ratings.service.js';
 import { FakeRunner, waitDone } from './fake-runner.js';
 import { createTestContext, createUser, type TestClient, type TestContext } from './helpers.js';
 
@@ -307,6 +308,12 @@ describe('finishing an attempt', () => {
       where: { action: 'attempt.finished', target: id },
     });
     expect(JSON.stringify(audit.meta)).not.toContain('def match_orders');
+    // V1.1: the verified result reaches the rating queue and counts as a win.
+    await ctx.app.get(RatingsService).drain();
+    const change = await ctx.prisma.ratingChange.findFirstOrThrow({
+      where: { eventKey: `attempt:${id}` },
+    });
+    expect(change).toMatchObject({ kind: 'verified', score: 1 });
   });
 
   it('grades follow-ups against the user’s own code and closes late answers', async () => {
