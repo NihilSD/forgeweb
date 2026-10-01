@@ -35,6 +35,7 @@ import { computeIntegrity } from '../integrity/integrity-score.js';
 import { INTEGRITY } from '../integrity/integrity.config.js';
 import { ContentService, type LoadedProblem } from '../problems/content.service.js';
 import { SubmissionsService } from '../submissions/submissions.service.js';
+import { purgeExpiredReplays } from './replay-retention.js';
 
 /** Submissions this long after the timer ends are still accepted (network latency). */
 const SUBMIT_GRACE_MS = 10_000;
@@ -45,8 +46,6 @@ const ANSWER_GRACE_MS = 3_000;
 const ABANDONED_FOLLOWUPS_MS = 15 * 60_000;
 /** Client batches per attempt (one every 5 s is 720 per hour). */
 const MAX_BATCHES = 3_000;
-/** Spec 3.2: replays are deleted after 12 months unless the user keeps them public. */
-export const REPLAY_RETENTION_DAYS = 365;
 
 const OPEN: AttemptStatus[] = ['in_progress', 'followups'];
 const BEST_ORDER: AttemptStatus[] = [
@@ -733,19 +732,8 @@ export class AttemptsService {
   }
 
   /** Spec 3.2: delete replays older than 12 months unless the user keeps them public. */
-  async purgeExpiredReplays(now = new Date()): Promise<number> {
-    const cutoff = new Date(now.getTime() - REPLAY_RETENTION_DAYS * 86_400_000);
-    const due = await this.db.attempt.findMany({
-      where: { finishedAt: { lt: cutoff }, replayPublic: false, replayDeletedAt: null },
-      select: { id: true },
-    });
-    for (const { id } of due) {
-      await this.db.$transaction([
-        this.db.attemptEvent.deleteMany({ where: { attemptId: id } }),
-        this.db.attempt.update({ where: { id }, data: { replayDeletedAt: now } }),
-      ]);
-    }
-    return due.length;
+  purgeExpiredReplays(now = new Date()): Promise<number> {
+    return purgeExpiredReplays(this.db, now);
   }
 
   /** Practice hints and editorials are off for a problem while a verified attempt on it is open. */

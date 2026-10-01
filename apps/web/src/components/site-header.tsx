@@ -21,9 +21,19 @@ export async function SiteHeader({ theme }: { theme: Theme }) {
             Problems
           </Link>
           {me ? (
-            <Link href="/skills" className="hover:text-foreground">
-              Skills
-            </Link>
+            <>
+              <Link href="/verified" className="hover:text-foreground">
+                Verified
+              </Link>
+              <Link href="/skills" className="hover:text-foreground">
+                Skills
+              </Link>
+              {me.role === 'moderator' || me.role === 'superadmin' ? (
+                <Link href="/admin/reviews" className="hover:text-foreground">
+                  Reviews
+                </Link>
+              ) : null}
+            </>
           ) : null}
         </nav>
         <div className="ml-auto flex items-center gap-2">

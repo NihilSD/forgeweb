@@ -17,7 +17,7 @@ const MONACO_LANGUAGE: Record<string, string> = {
   sql: 'sql',
 };
 
-type StandaloneEditor = Parameters<OnMount>[0];
+export type StandaloneEditor = Parameters<OnMount>[0];
 
 /**
  * A small Emacs keymap (movement, kill-line, delete, search). The only maintained-looking Emacs
@@ -59,6 +59,7 @@ export function CodeEditor({
   onRun,
   onSubmit,
   label,
+  onEditorMount,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -68,6 +69,8 @@ export function CodeEditor({
   onRun?: () => void;
   onSubmit?: () => void;
   label: string;
+  /** Gives callers the Monaco instance (e.g. the verified-attempt event recorder). */
+  onEditorMount?: (editor: StandaloneEditor) => void;
 }) {
   const [editor, setEditor] = useState<StandaloneEditor | null>(null);
   const statusRef = useRef<HTMLDivElement | null>(null);
@@ -81,6 +84,7 @@ export function CodeEditor({
       handlers.current.onSubmit?.(),
     );
     setEditor(mounted);
+    onEditorMount?.(mounted);
   };
 
   useEffect(() => {
