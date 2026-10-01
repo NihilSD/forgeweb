@@ -9,6 +9,8 @@ allowBuilds:
   '@prisma/engines': true
   sharp: true
   unrs-resolver: true
+  # Optional native speed-up for BullMQ; the pure JS fallback is used instead.
+  msgpackr-extract: false
 minimumReleaseAgeExclude:
   - '@nestjs/common@12.1.2'
   - '@nestjs/core@12.1.2'
@@ -18,3 +20,4 @@ minimumReleaseAgeExclude:
   - lucide-react@1.49.0
   - vitest@5.0.3
   - nodemailer@10.0.13
+  - stripe@23.0.0

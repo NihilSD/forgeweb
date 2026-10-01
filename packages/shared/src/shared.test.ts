@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FEATURES, PLAN_LIMITS, PLAN_PRICES } from './plans.js';
+import { FEATURES, PLAN_LIMITS, PLAN_PRICES, priceTierFor } from './plans.js';
 import { emailSchema, handleSchema, onboardingSchema, signupSchema } from './schemas/auth.js';
 import { problemListQuerySchema } from './schemas/problems.js';
 
@@ -49,8 +49,17 @@ describe('plans', () => {
     expect(PLAN_LIMITS.free.hintLevelsPerDay).toBe(3);
     expect(PLAN_LIMITS.free.streakFreezesPerMonth).toBe(2);
     expect(PLAN_LIMITS.pro.streakFreezesPerMonth).toBe(5);
-    expect(PLAN_PRICES.pro_monthly).toMatchObject({ amount: 1200, currency: 'eur' });
-    expect(PLAN_PRICES.pro_yearly).toMatchObject({ amount: 9900, currency: 'eur' });
+    expect(PLAN_PRICES.standard.month).toEqual({ amount: 1200, currency: 'eur' });
+    expect(PLAN_PRICES.standard.year).toEqual({ amount: 9900, currency: 'eur' });
+    // Spec 10: reduced markets pay 40–60% less.
+    for (const i of ['month', 'year'] as const) {
+      const ratio = PLAN_PRICES.reduced[i].amount / PLAN_PRICES.standard[i].amount;
+      expect(ratio).toBeGreaterThanOrEqual(0.4);
+      expect(ratio).toBeLessThanOrEqual(0.6);
+    }
+    expect(priceTierFor('ro')).toBe('reduced');
+    expect(priceTierFor('DE')).toBe('standard');
+    expect(priceTierFor(null)).toBe('standard');
   });
 });
 

@@ -20,6 +20,8 @@ export const RATE_CLASSES = {
   search: { user: { limit: 60, windowSec: 60 }, anon: { limit: 20, windowSec: 60 } },
   // Anonymous callers are rejected by auth anyway; a small budget lets them see 401, not 429.
   submission: { user: { limit: 30, windowSec: 60 }, anon: { limit: 10, windowSec: 60 } },
+  // Signed provider callbacks (Stripe) arrive in bursts from a few IPs.
+  webhook: { user: { limit: 1200, windowSec: 60 }, anon: { limit: 1200, windowSec: 60 } },
 } satisfies Record<string, { user: Limit; anon: Limit }>;
 export type RateClass = keyof typeof RATE_CLASSES;
 

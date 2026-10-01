@@ -8,9 +8,14 @@ import {
 } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AdminController } from './admin/admin.controller.js';
+import { BillingQueueService } from './billing/billing-queue.service.js';
+import { BillingController } from './billing/billing.controller.js';
+import { BillingService } from './billing/billing.service.js';
+import { createStripeApi, STRIPE_API } from './billing/stripe-client.js';
 import { AdminAttemptsController, AttemptsController } from './attempts/attempts.controller.js';
 import { AttemptsService } from './attempts/attempts.service.js';
 import { AuditService } from './audit/audit.service.js';
+import { ENV, type Env } from './config/env.js';
 import { AuthController } from './auth/auth.controller.js';
 import { AuthGuard, SessionMiddleware } from './auth/auth.guard.js';
 import { AuthService } from './auth/auth.service.js';
@@ -257,6 +262,45 @@ export class PracticeModule implements OnModuleInit {
   }
 }
 
+/** Spec 10: Stripe billing. The plan resolver installed here is what EntitlementsService uses. */
+@Module({
+  controllers: [BillingController],
+  providers: [
+    {
+      provide: STRIPE_API,
+      useFactory: (env: Env) => createStripeApi(env.STRIPE_SECRET_KEY),
+      inject: [ENV],
+    },
+    BillingService,
+    BillingQueueService,
+  ],
+  exports: [BillingService, BillingQueueService],
+})
+export class BillingModule implements OnModuleInit {
+  constructor(
+    @Inject(BillingService) private readonly billing: BillingService,
+    @Inject(EntitlementsService) private readonly entitlements: EntitlementsService,
+    @Inject(DataExportService) private readonly exporter: DataExportService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
+
+  onModuleInit() {
+    this.entitlements.planResolver = (userId) => this.billing.planFor(userId);
+    this.exporter.register('billing', async (userId) => ({
+      subscriptions: await this.prisma.client.subscription.findMany({
+        where: { userId },
+        select: {
+          status: true,
+          interval: true,
+          currency: true,
+          currentPeriodEnd: true,
+          createdAt: true,
+        },
+      }),
+    }));
+  }
+}
+
 @Module({
   imports: [ProblemsModule, SubmissionsModule],
   controllers: [AttemptsController, AdminAttemptsController],
@@ -304,6 +348,7 @@ export class AttemptsModule implements OnModuleInit {
     SubmissionsModule,
     PracticeModule,
     AttemptsModule,
+    BillingModule,
   ],
   controllers: [HealthController],
   providers: [

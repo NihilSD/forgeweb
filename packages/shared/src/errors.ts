@@ -22,6 +22,7 @@ export const ErrorCode = {
   TOKEN_INVALID: 'TOKEN_INVALID',
   PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
   ATTEMPT_CLOSED: 'ATTEMPT_CLOSED',
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
   INTERNAL: 'INTERNAL',
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
