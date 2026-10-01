@@ -66,7 +66,7 @@ export class MetricsController {
     if (!token || !given || !safeEqual(given, token)) {
       throw new ApiError(ErrorCode.UNAUTHENTICATED, 'Metrics token required.');
     }
-    const s = await this.monitoring.snapshot();
+    const [s, p] = await Promise.all([this.monitoring.snapshot(), this.monitoring.productCounts()]);
     return [
       '# HELP forge_runners_alive Runners with a live heartbeat.',
       '# TYPE forge_runners_alive gauge',
@@ -83,6 +83,24 @@ export class MetricsController {
       '# HELP forge_http_5xx_last_5m Unexpected 500 responses in the last 5 minutes.',
       '# TYPE forge_http_5xx_last_5m gauge',
       `forge_http_5xx_last_5m ${s.serverErrors5m}`,
+      '# HELP forge_backup_age_seconds Seconds since the last successful backup (-1: none).',
+      '# TYPE forge_backup_age_seconds gauge',
+      `forge_backup_age_seconds ${s.backupAgeSeconds}`,
+      '# HELP forge_users_total Accounts (not deleted).',
+      '# TYPE forge_users_total gauge',
+      `forge_users_total ${p.usersTotal}`,
+      '# HELP forge_signups_24h Accounts created in the last 24 hours.',
+      '# TYPE forge_signups_24h gauge',
+      `forge_signups_24h ${p.signups24h}`,
+      '# HELP forge_active_users_24h Users with a session active in the last 24 hours.',
+      '# TYPE forge_active_users_24h gauge',
+      `forge_active_users_24h ${p.activeUsers24h}`,
+      '# HELP forge_submissions_24h Runs and submits in the last 24 hours.',
+      '# TYPE forge_submissions_24h gauge',
+      `forge_submissions_24h ${p.submissions24h}`,
+      '# HELP forge_pro_subscriptions Active, trialing or past-due Pro subscriptions.',
+      '# TYPE forge_pro_subscriptions gauge',
+      `forge_pro_subscriptions ${p.proSubscriptions}`,
       '',
     ].join('\n');
   }

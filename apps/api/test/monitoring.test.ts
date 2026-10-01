@@ -10,6 +10,7 @@ import { ApiError } from '../src/common/api-error.js';
 import { ErrorFilter } from '../src/common/error.filter.js';
 import { MonitoringService } from '../src/monitoring/monitoring.service.js';
 import { importProblems } from '../src/problems/importer.js';
+import { RedisService } from '../src/infra/redis.service.js';
 import { RunnerQueueService } from '../src/submissions/runner-queue.service.js';
 import { createTestContext, createUser, type TestContext } from './helpers.js';
 
@@ -26,6 +27,7 @@ beforeEach(async () => {
   await ctx.reset();
   const runnerRedis = ctx.app.get(RunnerQueueService).connection;
   await runnerRedis.flushdb();
+  await mainRedis().set('monitoring:last-backup', String(Math.floor(Date.now() / 1000)));
 });
 
 const beat = (id = 'runner-1') =>
@@ -37,6 +39,7 @@ const beat = (id = 'runner-1') =>
       'EX',
       30,
     );
+const mainRedis = () => ctx.app.get(RedisService).client;
 const alerts = () => ctx.emails.outbox.filter((m) => m.to === 'ops@example.com');
 
 describe('runner health alerts', () => {
@@ -98,6 +101,27 @@ describe('runner health alerts', () => {
   });
 });
 
+describe('backup freshness', () => {
+  it('alerts when the last backup is older than BACKUP_MAX_AGE_HOURS, and when none exists', async () => {
+    const mon = ctx.app.get(MonitoringService);
+    await beat();
+    await mon.check();
+    expect(alerts()).toHaveLength(0);
+    await mainRedis().set(
+      'monitoring:last-backup',
+      String(Math.floor(Date.now() / 1000) - 27 * 3600),
+    );
+    await mon.check();
+    expect(alerts().at(-1)!.subject).toMatch(/FIRING.*backup/i);
+    await mainRedis().set('monitoring:last-backup', String(Math.floor(Date.now() / 1000)));
+    await mon.check();
+    expect(alerts().at(-1)!.subject).toMatch(/RESOLVED.*backup/i);
+    await mainRedis().del('monitoring:last-backup');
+    await mon.check();
+    expect(alerts().at(-1)!.subject).toMatch(/FIRING.*backup/i);
+  });
+});
+
 describe('error tracking', () => {
   it('alerts when the API returns a burst of 500s, and the filter records them', async () => {
     const mon = ctx.app.get(MonitoringService);
@@ -150,5 +174,21 @@ describe('status and metrics', () => {
     expect(ok.text).toMatch(/^forge_runner_queue_waiting \d+$/m);
     expect(ok.text).toMatch(/^forge_submission_oldest_queued_seconds \d+/m);
     expect(ok.text).toMatch(/^forge_http_5xx_last_5m \d+$/m);
+    expect(ok.text).toMatch(/^forge_backup_age_seconds \d+$/m);
+  });
+
+  it('includes product analytics as aggregate counts only (no personal data)', async () => {
+    const { user } = await createUser(ctx);
+    await createUser(ctx);
+    const ok = await request(ctx.app.getHttpServer())
+      .get('/api/v1/internal/metrics')
+      .set('authorization', `Bearer ${process.env.METRICS_TOKEN}`);
+    expect(ok.text).toMatch(/^forge_users_total 2$/m);
+    expect(ok.text).toMatch(/^forge_signups_24h 2$/m);
+    expect(ok.text).toMatch(/^forge_active_users_24h \d+$/m);
+    expect(ok.text).toMatch(/^forge_submissions_24h 0$/m);
+    expect(ok.text).toMatch(/^forge_pro_subscriptions 0$/m);
+    expect(ok.text).not.toContain(user.email);
+    expect(ok.text).not.toContain(user.id);
   });
 });

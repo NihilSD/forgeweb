@@ -14,6 +14,7 @@ import { BillingService } from './billing/billing.service.js';
 import { createStripeApi, STRIPE_API } from './billing/stripe-client.js';
 import { AdminAttemptsController, AttemptsController } from './attempts/attempts.controller.js';
 import { AttemptsService } from './attempts/attempts.service.js';
+import { ReplayPurgeScheduler } from './attempts/replay-purge.scheduler.js';
 import { AuditService } from './audit/audit.service.js';
 import { ENV, type Env } from './config/env.js';
 import { AuthController } from './auth/auth.controller.js';
@@ -329,7 +330,7 @@ export class BillingModule implements OnModuleInit {
 @Module({
   imports: [ProblemsModule, SubmissionsModule],
   controllers: [AttemptsController, AdminAttemptsController],
-  providers: [AttemptsService],
+  providers: [AttemptsService, ReplayPurgeScheduler],
   exports: [AttemptsService],
 })
 export class AttemptsModule implements OnModuleInit {

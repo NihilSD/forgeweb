@@ -17,7 +17,7 @@ export async function createApp(opts: { logger?: boolean } = {}): Promise<INestA
     bodyParser: false,
     logger: opts.logger === false ? false : ['error', 'warn', 'log'],
   });
-  app.set('trust proxy', env.TRUST_PROXY ? 1 : false);
+  app.set('trust proxy', env.TRUST_PROXY ? env.TRUST_PROXY_HOPS : false);
   app.disable('x-powered-by');
   app.use(securityHeaders(env.NODE_ENV === 'production'));
   // Stripe webhooks need the raw body for signature verification.

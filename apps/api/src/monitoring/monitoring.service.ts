@@ -25,9 +25,15 @@ export interface HealthSnapshot {
   oldestQueuedSeconds: number;
   failedWebhooks: number;
   serverErrors5m: number;
+  /** Seconds since the last successful backup; -1 when none was ever recorded. */
+  backupAgeSeconds: number;
 }
 
-type AlertName = 'runners-down' | 'submission-backlog' | 'webhooks-failing' | 'api-errors';
+/** Set by infra/production/scripts/backup.sh after each successful backup (unix seconds). */
+export const LAST_BACKUP_KEY = 'monitoring:last-backup';
+
+type AlertName =
+  'runners-down' | 'submission-backlog' | 'webhooks-failing' | 'api-errors' | 'backups-stale';
 
 const minuteKey = (t: number) => `monitoring:5xx:${Math.floor(t / 60_000)}`;
 
@@ -96,26 +102,66 @@ export class MonitoringService implements OnApplicationBootstrap, OnModuleDestro
 
   async snapshot(): Promise<HealthSnapshot> {
     const db = this.prisma.client;
-    const [runnersAlive, queueWaiting, oldest, failedWebhooks, serverErrors5m] = await Promise.all([
-      this.runnersAlive(),
-      this.runner.queue.getWaitingCount(),
-      db.submission.findFirst({
-        where: { status: 'queued' },
-        orderBy: { createdAt: 'asc' },
-        select: { createdAt: true },
-      }),
-      db.webhookEvent.count({
-        where: {
-          status: 'failed',
-          createdAt: { lt: new Date(Date.now() - WEBHOOK_STUCK_MINUTES * 60_000) },
-        },
-      }),
-      this.serverErrorsLast5m(),
-    ]);
+    const [runnersAlive, queueWaiting, oldest, failedWebhooks, serverErrors5m, lastBackup] =
+      await Promise.all([
+        this.runnersAlive(),
+        this.runner.queue.getWaitingCount(),
+        db.submission.findFirst({
+          where: { status: 'queued' },
+          orderBy: { createdAt: 'asc' },
+          select: { createdAt: true },
+        }),
+        db.webhookEvent.count({
+          where: {
+            status: 'failed',
+            createdAt: { lt: new Date(Date.now() - WEBHOOK_STUCK_MINUTES * 60_000) },
+          },
+        }),
+        this.serverErrorsLast5m(),
+        this.redis.client.get(LAST_BACKUP_KEY),
+      ]);
     const oldestQueuedSeconds = oldest
       ? Math.max(0, Math.floor((Date.now() - oldest.createdAt.getTime()) / 1000))
       : 0;
-    return { runnersAlive, queueWaiting, oldestQueuedSeconds, failedWebhooks, serverErrors5m };
+    const backupAgeSeconds = lastBackup
+      ? Math.max(0, Math.floor(Date.now() / 1000) - Number(lastBackup))
+      : -1;
+    return {
+      runnersAlive,
+      queueWaiting,
+      oldestQueuedSeconds,
+      failedWebhooks,
+      serverErrors5m,
+      backupAgeSeconds,
+    };
+  }
+
+  /**
+   * Spec L13 "analytics without personal data": aggregate counts from our own database, exposed
+   * only on the token-protected metrics endpoint. No third-party script, no cookies, no per-user
+   * data, nothing about verified-attempt code.
+   */
+  async productCounts() {
+    const db = this.prisma.client;
+    const since = new Date(Date.now() - 24 * 3_600_000);
+    const [usersTotal, signups24h, active, submissions24h, proSubscriptions] = await Promise.all([
+      db.user.count({ where: { deletedAt: null } }),
+      db.user.count({ where: { deletedAt: null, createdAt: { gte: since } } }),
+      db.session.findMany({
+        where: { lastSeenAt: { gte: since } },
+        distinct: ['userId'],
+        select: { userId: true },
+      }),
+      db.submission.count({ where: { createdAt: { gte: since } } }),
+      db.subscription.count({ where: { status: { in: ['active', 'trialing', 'past_due'] } } }),
+    ]);
+    return {
+      usersTotal,
+      signups24h,
+      activeUsers24h: active.length,
+      submissions24h,
+      proSubscriptions,
+    };
   }
 
   /** One monitoring pass. Runs every minute outside tests. */
@@ -141,6 +187,16 @@ export class MonitoringService implements OnApplicationBootstrap, OnModuleDestro
       s.serverErrors5m >= ERROR_BURST,
       `The API returned ${s.serverErrors5m} unexpected 500 errors in the last 5 minutes. Stack traces are in the API log (docker compose logs api).`,
     );
+    const maxAge = this.env.BACKUP_MAX_AGE_HOURS;
+    if (maxAge) {
+      await this.transition(
+        'backups-stale',
+        s.backupAgeSeconds < 0 || s.backupAgeSeconds > maxAge * 3600,
+        s.backupAgeSeconds < 0
+          ? 'No database backup has been recorded. Check the forge-backup timer (docs/runbooks/restore-backup.md).'
+          : `The last database backup finished ${Math.round(s.backupAgeSeconds / 3600)} hours ago (limit ${maxAge}h). Check: systemctl status forge-backup.timer; journalctl -u forge-backup.`,
+      );
+    }
     return s;
   }
 

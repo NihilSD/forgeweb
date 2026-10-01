@@ -14,4 +14,5 @@ process.env.STRIPE_PRICE_PRO_YEARLY ??= 'price_test_yearly';
 process.env.STRIPE_PRICE_PRO_MONTHLY_REDUCED ??= 'price_test_monthly_reduced';
 process.env.STRIPE_PRICE_PRO_YEARLY_REDUCED ??= 'price_test_yearly_reduced';
 process.env.ALERT_EMAIL ??= 'ops@example.com';
+process.env.BACKUP_MAX_AGE_HOURS ??= '26';
 process.env.METRICS_TOKEN ??= 'test-metrics-token-0000000000000000';

@@ -5,6 +5,7 @@
 import { resolve } from 'node:path';
 import { RequestMethod } from '@nestjs/common';
 import { ModulesContainer, Reflector } from '@nestjs/core';
+import express from 'express';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { testSignature } from '../src/billing/stripe-client.js';
@@ -295,6 +296,19 @@ describe('replays and spoofing', () => {
       statuses.push(res.status);
     }
     expect(statuses).toContain(429);
+  });
+
+  it('with 2 trusted hops (Caddy + Next.js) uses the address Caddy saw, not a spoofed one', async () => {
+    // Production chain: client → Caddy (replaces XFF with the peer address) → Next.js rewrite
+    // (appends Caddy's address) → API. A client-sent XFF never survives Caddy, but even if a
+    // proxy appended instead of replacing, the spoofed entry would sit left of the trusted hops.
+    const app = express();
+    app.set('trust proxy', 2);
+    app.get('/', (req, res) => res.send(req.ip));
+    const res = await request(app)
+      .get('/')
+      .set('x-forwarded-for', '6.6.6.6, 198.51.100.7, 172.18.0.5');
+    expect(res.text).toBe('198.51.100.7');
   });
 
   it('sets the security headers on API responses', async () => {

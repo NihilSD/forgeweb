@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "problems:import": "tsx src/cli/import-problems.ts",
-    "replays:purge": "tsx src/cli/purge-replays.ts"
+    "replays:purge": "tsx src/cli/purge-replays.ts",
+    "admin:grant-role": "tsx src/cli/grant-role.ts"
   },
   "dependencies": {
     "@forge/db": "workspace:*",

@@ -17,7 +17,7 @@ export function proxy(request: NextRequest) {
     `font-src 'self' data:`,
     `connect-src 'self'${isDev ? ' ws: wss:' : ''}`,
     `worker-src 'self' blob:`,
-    `frame-src ${process.env.SANDBOX_ORIGIN ?? "'none'"}`,
+    `frame-src ${process.env.SANDBOX_ORIGIN || "'none'"}`,
     `frame-ancestors 'none'`,
     `form-action 'self'`,
     `base-uri 'self'`,
