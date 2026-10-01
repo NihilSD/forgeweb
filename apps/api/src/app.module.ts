@@ -27,6 +27,8 @@ import { ErrorFilter } from './common/error.filter.js';
 import { ResponseSchemaInterceptor } from './common/response-schema.js';
 import { EmailService } from './email/email.service.js';
 import { HealthController } from './health/health.controller.js';
+import { MetricsController, StatusController } from './monitoring/monitoring.controller.js';
+import { MonitoringService } from './monitoring/monitoring.service.js';
 import { InfraModule } from './infra/infra.module.js';
 import { RateLimitGuard } from './rate-limit/rate-limit.guard.js';
 import { RateLimitService } from './rate-limit/rate-limit.service.js';
@@ -118,7 +120,7 @@ export class ProblemsModule {}
   imports: [ProblemsModule],
   controllers: [SubmissionsController, RunnerCallbackController, WorkspaceController],
   providers: [SubmissionsService, RunnerQueueService, FlagsService],
-  exports: [SubmissionsService, FlagsService],
+  exports: [SubmissionsService, FlagsService, RunnerQueueService],
 })
 export class SubmissionsModule implements OnModuleInit {
   constructor(
@@ -361,6 +363,15 @@ export class AttemptsModule implements OnModuleInit {
   }
 }
 
+/** Spec L13: alerts, public status and metrics. */
+@Module({
+  imports: [SubmissionsModule],
+  controllers: [StatusController, MetricsController],
+  providers: [MonitoringService],
+  exports: [MonitoringService],
+})
+export class MonitoringModule {}
+
 @Module({
   imports: [
     InfraModule,
@@ -372,6 +383,7 @@ export class AttemptsModule implements OnModuleInit {
     PracticeModule,
     AttemptsModule,
     BillingModule,
+    MonitoringModule,
   ],
   controllers: [HealthController],
   providers: [

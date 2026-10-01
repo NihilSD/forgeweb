@@ -10,6 +10,11 @@ export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().default(4000),
   APP_VERSION: z.string().default('0.0.0-dev'),
+  /** Monitoring alerts (L13): an email address and/or a webhook (ntfy, Slack, …). */
+  ALERT_EMAIL: z.string().optional(),
+  ALERT_WEBHOOK_URL: z.url().optional(),
+  /** Bearer token for GET /api/v1/internal/metrics (Prometheus). Unset = endpoint disabled. */
+  METRICS_TOKEN: z.string().min(24).optional(),
   WEB_ORIGIN: z.url().default('http://localhost:3000'),
   API_PUBLIC_URL: z.url().default('http://localhost:4000'),
   DATABASE_URL: z.string().min(1),

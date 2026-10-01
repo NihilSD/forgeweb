@@ -19,7 +19,8 @@ import { ENV, type Env } from '../config/env.js';
 export class RunnerQueueService implements OnModuleDestroy {
   readonly jobKeys: KeySet;
   readonly callbackKeys: KeySet;
-  private readonly connection: Redis;
+  /** Also read by monitoring (runner heartbeats live in this Redis). */
+  readonly connection: Redis;
   readonly queue: Queue<SignedJob>;
 
   constructor(@Inject(ENV) env: Env) {

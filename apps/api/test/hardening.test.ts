@@ -102,6 +102,8 @@ const PUBLIC_ALLOWLIST = new Set([
   'post /billing/webhook',
   'post /email/unsubscribe',
   'post /internal/runner/callback',
+  'get /status',
+  'get /internal/metrics', // Bearer METRICS_TOKEN, checked in the handler
 ]);
 
 describe('every route', () => {

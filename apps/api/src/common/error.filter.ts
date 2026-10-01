@@ -3,10 +3,13 @@ import {
   Catch,
   type ExceptionFilter,
   HttpException,
+  Inject,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { ErrorCode } from '@forge/shared';
 import type { Response } from 'express';
+import { MonitoringService } from '../monitoring/monitoring.service.js';
 import { ApiError } from './api-error.js';
 
 const HTTP_CODES: Record<number, ErrorCode> = {
@@ -22,11 +25,18 @@ const HTTP_CODES: Record<number, ErrorCode> = {
 export class ErrorFilter implements ExceptionFilter {
   private readonly logger = new Logger('ErrorFilter');
 
+  constructor(
+    @Optional() @Inject(MonitoringService) private readonly monitoring?: MonitoringService,
+  ) {}
+
   catch(exception: unknown, host: ArgumentsHost) {
     const res = host.switchToHttp().getResponse<Response>();
     const { status, body } = toErrorBody(exception);
-    if (status >= 500)
+    // Deliberate 503s (SERVICE_UNAVAILABLE) are reported by their own checks, not counted here.
+    if (status >= 500 && !(exception instanceof ApiError)) {
       this.logger.error(exception instanceof Error ? exception.stack : String(exception));
+      void this.monitoring?.recordServerError().catch(() => undefined);
+    }
     if (!res.headersSent) res.status(status).json(body);
   }
 }

@@ -7,6 +7,7 @@ const LINKS = [
   ['/legal/acceptable-use', 'Acceptable use'],
   ['/security/rules', 'Security challenge rules'],
   ['/pricing', 'Pricing'],
+  ['/status', 'Status'],
 ] as const;
 
 export function SiteFooter() {

@@ -17,6 +17,7 @@ const PUBLIC = [
   '/learn',
   '/daily',
   '/pricing',
+  '/status',
   '/security/rules',
   '/legal/privacy',
   '/legal/terms',
