@@ -16,3 +16,4 @@ export * from './exec/watchdog.js';
 export * from './exec/csv.js';
 export * from './runner-protocol.js';
 export * from './courses.js';
+export * from './placement.js';

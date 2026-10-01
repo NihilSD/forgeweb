@@ -30,7 +30,9 @@ import { DataExportService } from './users/data-export.service.js';
 import { EntitlementsService } from './entitlements/entitlements.service.js';
 import { DailyService } from './engagement/daily.service.js';
 import { EngagementController } from './engagement/engagement.controller.js';
+import { DigestService } from './engagement/digest.service.js';
 import { EngagementService } from './engagement/engagement.service.js';
+import { PlacementService } from './engagement/placement.service.js';
 import { PracticeController } from './practice/practice.controller.js';
 import { PracticeService } from './practice/practice.service.js';
 import { CoursesController } from './courses/courses.controller.js';
@@ -175,7 +177,7 @@ export class SubmissionsModule implements OnModuleInit {
 @Module({
   imports: [ProblemsModule, SubmissionsModule],
   controllers: [PracticeController, CoursesController, EngagementController],
-  providers: [PracticeService],
+  providers: [PracticeService, PlacementService, DigestService],
   exports: [PracticeService],
 })
 export class PracticeModule implements OnModuleInit {

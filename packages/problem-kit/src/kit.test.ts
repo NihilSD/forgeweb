@@ -136,3 +136,29 @@ describe('dev executor verdicts', () => {
     }
   });
 });
+
+describe('placement quiz', () => {
+  it('accepts the real quiz and rejects broken ones', async () => {
+    const { validatePlacement } = await import('./placement.js');
+    const { mkdtemp, writeFile } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join, resolve } = await import('node:path');
+    expect(
+      await validatePlacement(resolve(import.meta.dirname, '../../../content/placement/quiz.yaml')),
+    ).toEqual([]);
+    const dir = await mkdtemp(join(tmpdir(), 'forge-quiz-'));
+    const bad = join(dir, 'quiz.yaml');
+    await writeFile(
+      bad,
+      'status: approved\nquestions:\n  - { id: a, tag: blockchain, prompt: "Which one is right?", options: [x, x], answer: 2 }\n',
+    );
+    const errors = (await validatePlacement(bad)).join('\n');
+    expect(errors).toMatch(/questions/);
+    expect(errors).toMatch(/tag/);
+    await writeFile(
+      bad,
+      'status: approved\nquestions:\n  - { id: a, tag: arrays, prompt: "Which one is right?", options: [x, y], answer: 2 }\n',
+    );
+    expect((await validatePlacement(bad)).join('\n')).toMatch(/answer must index an option/);
+  });
+});

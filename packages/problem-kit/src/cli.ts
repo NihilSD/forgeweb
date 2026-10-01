@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { findPackages } from './build.js';
 import { findCourses, validateCourse } from './courses.js';
+import { validatePlacement } from './placement.js';
 import { DevExecutor } from './exec/dev-executor.js';
 import { validatePackage } from './validate.js';
 
@@ -84,6 +85,16 @@ async function main() {
     }
   }
   failed += courseFailures;
+  // The placement quiz (content/placement/quiz.yaml), if present.
+  const quiz = resolve(root, '../placement/quiz.yaml');
+  if (!values.only && existsSync(quiz)) {
+    const errors = await validatePlacement(quiz);
+    if (errors.length) failed++;
+    if (!values.json) {
+      console.info(`${errors.length ? '✘' : '✔'} placement quiz`);
+      for (const e of errors) console.info(`    error: ${e}`);
+    }
+  }
   if (values.json) console.info(JSON.stringify(reports, null, 2));
   else
     console.info(

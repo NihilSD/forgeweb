@@ -12,6 +12,7 @@ import { parseArgs } from 'node:util';
 import { createPrismaClient } from '@forge/db';
 import { findPackages, type ValidationReport, validatePackage } from '@forge/problem-kit';
 import { importCourses } from '../courses/course-importer.js';
+import { importPlacement } from '../engagement/placement.service.js';
 import { importProblems } from '../problems/importer.js';
 
 const { values } = parseArgs({
@@ -51,6 +52,10 @@ try {
     publishDrafts: values['publish-drafts'],
   });
   console.info(`courses: ${courses.join(', ') || 'none'}`);
+  const quiz = await importPlacement(prisma, resolve(values.root, '../placement/quiz.yaml'), {
+    publishDrafts: values['publish-drafts'],
+  });
+  console.info(`placement questions: ${quiz}`);
   process.exitCode = summary.failed.length ? 1 : 0;
 } finally {
   await prisma.$disconnect();
