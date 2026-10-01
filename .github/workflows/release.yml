@@ -1,0 +1,46 @@
+name: Release images
+
+# Builds the production images for a release tag (v*) and pushes them to GitHub Container
+# Registry as ghcr.io/<owner>/forge-{api,web,tools,runner}:<tag>. Tag only commits whose CI is
+# green on main. Deploy with infra/production/scripts/deploy.sh <tag> (docs/runbooks/deploy.md).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build and push
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          owner="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          registry="ghcr.io/$owner/forge"
+          docker buildx create --use
+          for target in api web tools runner; do
+            docker buildx build --push \
+              -f infra/docker/Dockerfile --target "$target" \
+              --build-arg API_INTERNAL_URL=http://api:4000 \
+              --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+              --label "org.opencontainers.image.revision=${{ github.sha }}" \
+              --cache-from "type=registry,ref=$registry-cache:$target" \
+              --cache-to "type=registry,ref=$registry-cache:$target,mode=max" \
+              -t "$registry-$target:$TAG" .
+          done
+      - name: Summary
+        run: |
+          echo "Images pushed for ${{ github.ref_name }}. Deploy on the app VM:" >> "$GITHUB_STEP_SUMMARY"
+          echo '`sudo /opt/forge/infra/production/scripts/deploy.sh ${{ github.ref_name }}`' >> "$GITHUB_STEP_SUMMARY"

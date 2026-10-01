@@ -1,0 +1,150 @@
+# Forge production stack for the app VM (spec 2: Docker Compose on VMs in the EU, runners on
+# separate VMs). Secrets come from /etc/forge/forge.env on the host (root-only, mode 600), never
+# from this repository. scripts/deploy.sh passes it as --env-file (for ${…} below) and only the
+# API container receives it whole; tools gets the database URL, web a few non-secret settings.
+# Deploy with scripts/deploy.sh, not by hand.
+#
+# Only Caddy publishes ports to the internet. The runner job Redis listens on the private
+# interface (RUNNER_REDIS_BIND) for the runner VM; Postgres and the main Redis are not published.
+name: forge
+
+x-app: &app
+  restart: unless-stopped
+  # tini as PID 1: Node re-raises SIGTERM after a graceful shutdown, which the kernel ignores for
+  # PID 1. Without it a stopped API kept running without listening (found in the rehearsal).
+  init: true
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  logging: &logging
+    driver: json-file
+    options: { max-size: 20m, max-file: '10' }
+
+services:
+  caddy:
+    image: ${CADDY_IMAGE:-caddy:2}
+    restart: unless-stopped
+    ports: ['80:80', '443:443', '443:443/udp']
+    environment:
+      FORGE_DOMAIN: ${FORGE_DOMAIN:?set FORGE_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL (Let's Encrypt account email)}
+      CADDY_TLS: ${CADDY_TLS:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [web, api]
+    networks: [edge]
+    logging: *logging
+
+  web:
+    <<: *app
+    image: ${FORGE_REGISTRY:-ghcr.io/OWNER/forge}-web:${FORGE_TAG:?set FORGE_TAG}
+    tmpfs: [/tmp, /app/apps/web/.next/cache]
+    environment:
+      API_INTERNAL_URL: http://api:4000
+      SANDBOX_ORIGIN: ${SANDBOX_ORIGIN:-}
+      SECURITY_CONTACT_EMAIL: ${SECURITY_CONTACT_EMAIL:-}
+    depends_on: [api]
+    networks: [edge, app]
+
+  api:
+    <<: *app
+    image: ${FORGE_REGISTRY:-ghcr.io/OWNER/forge}-api:${FORGE_TAG:?set FORGE_TAG}
+    env_file: ['${FORGE_ENV_FILE:-/etc/forge/forge.env}']
+    environment:
+      NODE_ENV: production
+      APP_VERSION: ${FORGE_TAG}
+      BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS:-26}
+      TRUST_PROXY: 'true'
+      TRUST_PROXY_HOPS: '2'
+      DATABASE_URL: postgresql://forge:${POSTGRES_PASSWORD:?}@postgres:5432/forge
+      REDIS_URL: redis://redis:6379/0
+      RUNNER_REDIS_URL: redis://api:${RUNNER_REDIS_API_PASSWORD:?}@runner-redis:6379/0
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+      runner-redis: { condition: service_started }
+    networks: [edge, app]
+
+  # One-off jobs (`docker compose run --rm tools …`): migrations and content import.
+  tools:
+    <<: *app
+    image: ${FORGE_REGISTRY:-ghcr.io/OWNER/forge}-tools:${FORGE_TAG:?set FORGE_TAG}
+    read_only: false
+    restart: 'no'
+    profiles: [tools]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://forge:${POSTGRES_PASSWORD:?}@postgres:5432/forge
+    networks: [app]
+
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:17-bookworm}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_DB: forge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U forge -d forge']
+      interval: 5s
+      retries: 20
+    shm_size: 256m
+    networks: [app]
+    logging: *logging
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    volumes: [redisdata:/data]
+    networks: [app]
+    logging: *logging
+
+  # Job queue shared with the runner VM. ACL users (scripts/runner-redis-acl.sh): `api` (full on
+  # the queue) and `runner` (queue + heartbeat keys only). The default user is disabled.
+  runner-redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--aclfile', '/etc/redis/users.acl']
+    ports: ['${RUNNER_REDIS_BIND:-127.0.0.1}:6380:6379']
+    volumes:
+      - runnerredisdata:/data
+      - '${RUNNER_REDIS_ACL:-/etc/forge/runner-redis.acl}:/etc/redis/users.acl:ro'
+    networks: [app]
+    logging: *logging
+
+  # Nightly encrypted dump (systemd timer runs `docker compose run --rm backup`). The container
+  # only holds the public key: it can write backups but never read them back.
+  backup:
+    image: ${POSTGRES_IMAGE:-postgres:17-bookworm}
+    restart: 'no'
+    profiles: [tools]
+    environment:
+      PGHOST: postgres
+      PGUSER: forge
+      PGDATABASE: forge
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+      BACKUP_DIR: /backups
+      BACKUP_RECIPIENT_FILE: /keys/backup-public.asc
+      REDIS_HOST: redis
+    volumes:
+      - ./scripts/backup.sh:/backup.sh:ro
+      - '${BACKUP_DIR:-/var/backups/forge}:/backups'
+      - '${BACKUP_PUBLIC_KEY:-/etc/forge/backup-public.asc}:/keys/backup-public.asc:ro'
+    entrypoint: ['bash', '/backup.sh']
+    networks: [app]
+
+networks:
+  edge: {}
+  app: {}
+
+volumes:
+  caddy-data:
+  caddy-config:
+  pgdata:
+  redisdata:
+  runnerredisdata:

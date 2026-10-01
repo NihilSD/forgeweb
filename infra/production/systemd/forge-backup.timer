@@ -1,0 +1,11 @@
+# /etc/systemd/system/forge-backup.timer — every day at 02:17 UTC (spec 3.3: daily, 30 days).
+[Unit]
+Description=Nightly Forge backup
+
+[Timer]
+OnCalendar=*-*-* 02:17:00 UTC
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

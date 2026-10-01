@@ -1,0 +1,44 @@
+# TLS (Let's Encrypt) and reverse proxy. The browser only talks to the web app; Next.js proxies
+# /api/v1 to the API, so cookies stay first-party. Stripe webhooks and the runner callback reach
+# the API through the same path.
+{
+	email {$ACME_EMAIL}
+	# No trusted_proxies: Caddy is the edge, so it replaces any client-sent X-Forwarded-For with
+	# the real peer address. (Trusting private ranges let a spoofed header through in the
+	# rehearsal, because Docker's port proxy connects from a private address.)
+}
+
+{$FORGE_DOMAIN} {
+	{$CADDY_TLS}
+	encode zstd gzip
+
+	# Metrics are scraped from inside the private network only.
+	@metrics path /api/v1/internal/metrics
+	respond @metrics 404
+
+	request_body {
+		max_size 2MB
+	}
+	reverse_proxy web:3000 {
+		header_up X-Forwarded-Proto {scheme}
+	}
+	log {
+		output stdout
+		format json
+		# No cookies or auth headers in access logs.
+		format filter {
+			request>headers>Cookie delete
+			request>headers>Authorization delete
+			request>headers>X-Csrf-Token delete
+			resp_headers>Set-Cookie delete
+			request>uri query {
+				delete token
+			}
+		}
+	}
+}
+
+www.{$FORGE_DOMAIN} {
+	{$CADDY_TLS}
+	redir https://{$FORGE_DOMAIN}{uri} permanent
+}

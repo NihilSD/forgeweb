@@ -1,0 +1,9 @@
+# /etc/systemd/system/forge-alert@.service — tells the owner when a host job (backup) fails.
+# The API's monitoring can't see host timers, so this posts to the same ALERT_WEBHOOK_URL.
+[Unit]
+Description=Alert on failure of %i
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/forge/forge.env
+ExecStart=/bin/bash -c '[ -n "$ALERT_WEBHOOK_URL" ] && curl -fsS -m 10 -H "content-type: application/json" -d "{\\"title\\":\\"[Forge] FIRING: %i failed\\",\\"text\\":\\"%i failed on $(hostname). journalctl -u %i\\"}" "$ALERT_WEBHOOK_URL" || logger -t forge-alert "%i failed (no ALERT_WEBHOOK_URL)"'

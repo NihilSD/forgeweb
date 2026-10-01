@@ -1,0 +1,12 @@
+# /etc/systemd/system/forge-backup.service — nightly encrypted backup, then the offsite copy.
+[Unit]
+Description=Forge database backup
+After=docker.service
+Requires=docker.service
+OnFailure=forge-alert@%n.service
+
+[Service]
+Type=oneshot
+Environment=FORGE_DIR=/opt/forge/infra/production
+ExecStart=/bin/bash -c 'source /opt/forge/infra/production/scripts/lib.sh && FORGE_TAG="$(current_tag)" dc run --rm backup'
+ExecStartPost=/opt/forge/infra/production/scripts/offsite.sh
