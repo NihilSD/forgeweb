@@ -39,6 +39,8 @@ model User {
   languages           String[]  @default([])
   onboardedAt         DateTime?
   emailDigestOptIn    Boolean   @default(false)
+  /// Local week (Monday, YYYY-MM-DD) of the last weekly progress email sent.
+  digestSentWeek      String?
   failedLoginCount    Int       @default(0)
   lockedUntil         DateTime?
   deletionRequestedAt DateTime?
@@ -64,6 +66,9 @@ model User {
   lessonProgresses  LessonProgress[]
   attempts          Attempt[]
   reviewsGiven      Review[]          @relation("Reviewer")
+  xpEvents          XpEvent[]
+  streak            Streak?
+  placement         PlacementResult?
 
   @@index([deletionRequestedAt])
 }
@@ -163,13 +168,14 @@ model AuditLog {
 // ---------------------------------------------------------------- L3: problems
 
 model Track {
-  id        String    @id @default(uuid()) @db.Uuid
-  slug      String    @unique
+  id        String           @id @default(uuid()) @db.Uuid
+  slug      String           @unique
   name      String
   order     Int
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
   problems  Problem[]
+  dailies   DailyChallenge[]
 }
 
 enum ProblemStatus {
@@ -233,6 +239,7 @@ model Problem {
   notes             Note[]
   reviewItems       ReviewItem[]
   attempts          Attempt[]
+  dailies           DailyChallenge[]
 
   @@index([trackId, status])
   @@index([status, difficulty])
@@ -659,4 +666,82 @@ model Appeal {
   decidedAt DateTime?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+}
+
+// ---------------------------------------------------------------- L9: daily, XP, streaks, placement
+
+/// Spec 8: one daily challenge per track per UTC date.
+model DailyChallenge {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// UTC date, YYYY-MM-DD.
+  date      String
+  trackId   String   @db.Uuid
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  problemId String   @db.Uuid
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, trackId])
+  @@index([problemId])
+}
+
+/// Every XP award. `sourceKey` makes each award happen once (e.g. solve:<problemId>).
+model XpEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  /// solve | lesson | daily
+  reason    String
+  sourceKey String
+  at        DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, sourceKey])
+  @@index([userId, at])
+}
+
+/// Spec 8: streak state, in the user's local days.
+model Streak {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  current     Int      @default(0)
+  longest     Int      @default(0)
+  lastDay     String?
+  freezeMonth String?
+  freezesUsed Int      @default(0)
+  frozenDays  String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Placement quiz questions, imported from content/placement/quiz.yaml.
+model PlacementQuestion {
+  id        String   @id
+  order     Int
+  tag       String
+  prompt    String
+  options   String[]
+  /// SERVER-ONLY: index of the correct option.
+  answer    Int
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// One placement result per user (taken or skipped).
+model PlacementResult {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skipped   Boolean  @default(false)
+  score     Int      @default(0)
+  total     Int      @default(0)
+  /// Question id → chosen option index.
+  answers   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

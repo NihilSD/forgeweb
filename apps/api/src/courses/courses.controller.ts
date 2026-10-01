@@ -9,6 +9,7 @@ import { ResponseSchema } from '../common/response-schema.js';
 import { ZodPipe } from '../common/zod.js';
 import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
+import { EngagementService } from '../engagement/engagement.service.js';
 import { SolvedService } from '../problems/solved.service.js';
 
 const slugSchema = z.string().regex(/^[a-z0-9-]{1,80}$/);
@@ -25,6 +26,7 @@ export class CoursesController {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(EntitlementsService) private readonly entitlements: EntitlementsService,
     @Inject(SolvedService) private readonly solved: SolvedService,
+    @Inject(EngagementService) private readonly engagement: EngagementService,
   ) {}
 
   private async completedIds(userId: string | undefined) {
@@ -174,7 +176,10 @@ export class CoursesController {
       .create({ data: { userId: user.id, lessonId: lesson.id, completedAt: now } })
       .then(() => true)
       .catch(() => false); // already completed
-    if (created) for (const h of this.hooks) await h.onLessonCompleted?.(user.id, lesson.id, now);
+    if (created) {
+      await this.engagement.onLessonCompleted(user.id, lesson.id, now);
+      for (const h of this.hooks) await h.onLessonCompleted?.(user.id, lesson.id, now);
+    }
     return { ...view, completed: true };
   }
 }

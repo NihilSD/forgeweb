@@ -28,6 +28,9 @@ import { RateLimitService } from './rate-limit/rate-limit.service.js';
 import { AccountDeletionService } from './users/account-deletion.service.js';
 import { DataExportService } from './users/data-export.service.js';
 import { EntitlementsService } from './entitlements/entitlements.service.js';
+import { DailyService } from './engagement/daily.service.js';
+import { EngagementController } from './engagement/engagement.controller.js';
+import { EngagementService } from './engagement/engagement.service.js';
 import { PracticeController } from './practice/practice.controller.js';
 import { PracticeService } from './practice/practice.service.js';
 import { CoursesController } from './courses/courses.controller.js';
@@ -59,6 +62,8 @@ import { UsersController } from './users/users.controller.js';
     MeService,
     DataExportService,
     EntitlementsService,
+    DailyService,
+    EngagementService,
   ],
   exports: [
     AuditService,
@@ -69,6 +74,8 @@ import { UsersController } from './users/users.controller.js';
     MeService,
     DataExportService,
     EntitlementsService,
+    DailyService,
+    EngagementService,
   ],
 })
 export class CoreModule implements OnModuleInit {
@@ -167,7 +174,7 @@ export class SubmissionsModule implements OnModuleInit {
 
 @Module({
   imports: [ProblemsModule, SubmissionsModule],
-  controllers: [PracticeController, CoursesController],
+  controllers: [PracticeController, CoursesController, EngagementController],
   providers: [PracticeService],
   exports: [PracticeService],
 })
@@ -177,10 +184,24 @@ export class PracticeModule implements OnModuleInit {
     @Inject(SubmissionsService) private readonly submissions: SubmissionsService,
     @Inject(DataExportService) private readonly exporter: DataExportService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(EngagementService) private readonly engagement: EngagementService,
   ) {}
 
   onModuleInit() {
     this.submissions.hooks.push({ onFinished: (sub) => this.practice.onSubmissionFinished(sub) });
+    // Spec 8: XP for first solves, streak days and the daily bonus.
+    this.practice.hooks.push({
+      onSolved: (userId, problem, info) =>
+        this.engagement.onFirstSolve(userId, problem, info.hintsUsed, info.at),
+    });
+    this.submissions.hooks.push({
+      onFinished: async (sub) => {
+        if (sub.kind !== 'submit' || sub.verdict !== 'accepted') return;
+        await this.engagement.onSolved(sub.userId, sub.problemId, sub.finishedAt ?? new Date(), {
+          practice: !sub.attemptId,
+        });
+      },
+    });
     const db = this.prisma.client;
     this.exporter.register('lessons', (userId) =>
       db.lessonProgress.findMany({
@@ -204,6 +225,25 @@ export class PracticeModule implements OnModuleInit {
       db.bookmark.findMany({
         where: { userId },
         select: { problem: { select: { slug: true } }, createdAt: true },
+      }),
+    );
+    this.exporter.register('xp', (userId) =>
+      db.xpEvent.findMany({
+        where: { userId },
+        select: { amount: true, reason: true, at: true },
+        orderBy: { at: 'asc' },
+      }),
+    );
+    this.exporter.register('streak', (userId) =>
+      db.streak.findUnique({
+        where: { userId },
+        select: { current: true, longest: true, lastDay: true, frozenDays: true },
+      }),
+    );
+    this.exporter.register('placement', (userId) =>
+      db.placementResult.findUnique({
+        where: { userId },
+        select: { skipped: true, score: true, total: true, answers: true, createdAt: true },
       }),
     );
     this.exporter.register('hints', (userId) =>

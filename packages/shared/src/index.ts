@@ -9,3 +9,4 @@ export * from './schemas/submissions.js';
 export * from './schemas/practice.js';
 export * from './schemas/attempts.js';
 export * from './replay.js';
+export * from './schemas/engagement.js';

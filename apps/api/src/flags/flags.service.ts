@@ -4,6 +4,7 @@ import { flagFor, type InstanceFile } from '@forge/problem-kit';
 import { hmac, safeEqual, sha256 } from '../common/crypto.js';
 import { ENV, type Env } from '../config/env.js';
 import { AuditService } from '../audit/audit.service.js';
+import { EngagementService } from '../engagement/engagement.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
 import { ContentService, type LoadedProblem } from '../problems/content.service.js';
 
@@ -23,6 +24,7 @@ export class FlagsService {
     @Inject(ContentService) private readonly content: ContentService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(ENV) private readonly env: Env,
+    @Inject(EngagementService) private readonly engagement: EngagementService,
   ) {
     // A dedicated key derived from APP_SECRET, so flags can't be computed from any other HMAC.
     this.secret = hmac(env.APP_SECRET, 'forge-flags-v1', 'hex');
@@ -80,6 +82,7 @@ export class FlagsService {
     await this.prisma.client.flagSubmission.create({
       data: { userId, problemId: problem.id, valueHash, correct, sharedFrom },
     });
+    if (correct) await this.engagement.onFlagSolved(userId, problem, new Date());
     if (sharedFrom) {
       await this.audit.log({
         actorId: userId,
