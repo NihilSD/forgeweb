@@ -1,4 +1,6 @@
 'use client';
+import type { ComponentProps } from 'react';
+import { BillingSection } from './billing-section';
 import type { Me, SessionInfo } from '@forge/shared';
 import {
   Alert,
@@ -432,14 +434,31 @@ function DataSection({ me }: { me: Me }) {
   );
 }
 
-export function SettingsClient({ me }: { me: Me }) {
+export function SettingsClient({
+  me,
+  tab,
+  billing,
+}: {
+  me: Me;
+  tab?: string | undefined;
+  billing: ComponentProps<typeof BillingSection>;
+}) {
   return (
-    <Tabs defaultValue="profile" className="mt-6">
+    <Tabs
+      defaultValue={
+        ['profile', 'security', 'billing', 'data'].includes(tab ?? '') ? tab : 'profile'
+      }
+      className="mt-6"
+    >
       <TabsList>
         <TabsTrigger value="profile">Profile</TabsTrigger>
         <TabsTrigger value="security">Security</TabsTrigger>
+        <TabsTrigger value="billing">Billing</TabsTrigger>
         <TabsTrigger value="data">Data</TabsTrigger>
       </TabsList>
+      <TabsContent value="billing" className="grid gap-6">
+        <BillingSection {...billing} />
+      </TabsContent>
       <TabsContent value="profile" className="grid gap-6">
         <ProfileSection me={me} />
       </TabsContent>

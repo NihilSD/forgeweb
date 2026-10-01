@@ -6,6 +6,7 @@ if (existsSync('../../.env')) process.loadEnvFile('../../.env');
 
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH;
 const reuse = !process.env.CI;
+export const E2E_STRIPE_WEBHOOK_SECRET = 'whsec_e2e_forge_test_only_secret_0000000000';
 
 export default defineConfig({
   testDir: './e2e',
@@ -36,6 +37,8 @@ export default defineConfig({
         DATABASE_URL:
           process.env.E2E_DATABASE_URL ?? 'postgresql://forge:forge@localhost:5432/forge_e2e',
         REDIS_URL: process.env.E2E_REDIS_URL ?? 'redis://localhost:6379/3',
+        // Test-only secret: e2e signs Stripe-style webhooks itself (no Stripe account needed).
+        STRIPE_WEBHOOK_SECRET: E2E_STRIPE_WEBHOOK_SECRET,
       },
     },
     {
